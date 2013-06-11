@@ -1,0 +1,9 @@
+enyo.depends(
+	"../lib/uuid.js",
+        "fixidb.js",
+        "RandomizedTimer.js",
+	"DataLayout.js",
+	"SundayDataIDB.js",
+	"SundayDataHTTP.js",
+	"SundayData.js"
+);

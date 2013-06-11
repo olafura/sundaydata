@@ -1,0 +1,1 @@
+["Gruntfile.js","^tools$","^build$","^node_modules$","\..*\.swp","^source$","^index.html$","^LICENCE$","^lib$","^test$"]

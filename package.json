@@ -1,0 +1,43 @@
+{
+  "name": "SundayData",
+  "release": "nightly",
+  "description": "SundayData is a fast, intelligent and light way of storing data in you browser and using the power of CouchDB.",
+  "author": "Olafur Arason",
+  "version": "0.0.1",
+  "main": "./src/pouch.js",
+  "homepage": "https://github.com/olafura/sundaydata",
+  "keywords": [
+    "db",
+    "couchdb",
+    "sundaydata"
+  ],
+  "tags": [
+    "db",
+    "couchdb",
+    "sundaydata"
+  ],
+  "dependencies": {
+    "enyo": "2.2"
+  },
+  "devDependencies": {
+    "grunt": "~0.4",
+    "grunt-cli": "~0.1",
+    "grunt-contrib-uglify": "~0.1.1",
+    "grunt-contrib-jshint": "~0.1.1"
+  },
+  "maintainers": [
+    {
+      "name": "Olafur Arason",
+      "web": "https://github.com/olafura"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "git",
+      "url": "https://github.com/olafura/sundaydata"
+    }
+  ],
+  "scripts": {
+    "test": "grunt test"
+  }
+}
