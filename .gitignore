@@ -1,0 +1,7 @@
+dist
+*~
+*.swp
+*.swo
+!.gitignore
+node_modules
+npm-debug.log
