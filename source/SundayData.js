@@ -5,6 +5,8 @@ enyo.kind({
 		dataStore: "",
 		url: "",
 		database: "",
+		username: "",
+		password: "",
 		host: ""
 	},
         data: null,
@@ -16,7 +18,7 @@ enyo.kind({
 	},
 	setUrl: function (url) {
 		var idbcheck = /idb\:\/\/(\w*)\/?/;
-		var httpcheck = /(https?\:\/\/\w*\:?\d*)\/(\w*)/;
+		var httpcheck = /(https?\:\/\/(\w*\:\w*@)?\w*\:?\d*)\/(\w*)/;
 		if (typeof url === "string") {
 			var idbresults = url.match(idbcheck);
 			if (idbresults !== null) {
@@ -26,11 +28,15 @@ enyo.kind({
 				}
 			} else {
 				var httpresults = url.match(httpcheck);
-				console.log(httpresults);
 				if (httpresults !== null && httpresults[1] !== "" && httpresults[2] !== "") {
-					console.log("http");
+					if(httpresults[2] !== undefined) {
+						usernamepassword = httpresults[2];
+						usernamepassword = usernamepassword.replace(/@$/,"").split(":");
+						this.setUsername(usernamepassword[0]);
+						this.setPassword(usernamepassword[1]);
+					}
 					this.setHost(httpresults[1]);
-					this.setDatabase(httpresults[2]);
+					this.setDatabase(httpresults[3]);
 					this.setDataStore("SundayDataHTTP");
 				}
 			}
@@ -54,6 +60,10 @@ enyo.kind({
 			if(async === undefined) {
 				async = new this.data.async();
 			}
+			if(this.username !== "") {
+				async.username = this.username;
+				async.password = this.password;
+			}
 			var ret = new SundayDataReturn();
 			ret.parent = this;
 			async.error(function(inSender, inResponse) {
@@ -71,7 +81,6 @@ enyo.kind({
 		}
 	},
 	put: function (doc, options, async) {
-		console.log("doc",doc);
 		if(this.data) {
 			if(async === undefined) {
 				async = new this.data.async();
@@ -203,7 +212,7 @@ enyo.kind({
 		if(this.data) {
 			var newstore = {};
 			var idbcheck = /idb\:\/\/(\w*)\/?/;
-			var httpcheck = /(https?\:\/\/\w*\:?\d*)\/(\w*)/;
+			var httpcheck = /(https?\:\/\/(\w*\:\w*@)?\w*\:?\d*)\/(\w*)/;
 			var idbresults = url.match(idbcheck);
 			if (idbresults !== null) {
 				if (idbresults[1] !== "") {
@@ -214,24 +223,31 @@ enyo.kind({
 			} else {
 				var httpresults = url.match(httpcheck);
 				if (httpresults !== null && httpresults[1] !== "" && httpresults[2] !== "") {
-					newstore.host = httpresults[1];
-					newstore.database = httpresults[2];
 					newstore.dataStore = "SundayDataHTTP";
-					async = new enyo.Ajax();
+					if(httpresults.length === 4) {
+						newstore.host = httpresults[1];
+						newstore.database = httpresults[3];
+						usernamepassword = httpresults[2];
+						usernamepassword = usernamepassword.replace(/@$/,"").split(":");
+						async = new enyo.Ajax();
+					} else {
+						newstore.host = httpresults[1];
+						newstore.database = httpresults[2];
+						async = new enyo.Ajax();
+					}
 				}
 			}
 			var from = enyo.createFromKind(newstore.DataStore, newstore);
 			//console.log(from);
 			var parent = this.data;
 			async.response(function (inSender, inResponse) {
-				console.log("inSender", inSender);
-				console.log("inResponse", inResponse);
-				console.log("parent", parent);
+				//console.log("inSender", inSender);
+				//console.log("inResponse", inResponse);
+				//console.log("parent", parent);
 				var docs = [];
 				for (var doc in inResponse.rows) {
 					docs.push(inResponse.rows[doc].doc);
 				}
-				console.log("docs", docs);
 				parent.bulkDocs(docs);
 			});
 			from.allDocs("include_docs=true&update_seq=true", async);
@@ -286,72 +302,117 @@ var SundayDataReturn = function() {
 		}
 	};
         this.get = function (id, options) {
-		if(id === undefined) {
-			if(this.value !== null) {
+		var retparent = this;
+		if(this.value !== null && resultStack.length === 0) {
+			if(id === undefined) {
 				id = this.value.id === undefined?this.value._id:this.value.id;
-				if(id !== undefined) {
-					return this.parent.get(id);
-				} else { 
-					return this;
-				}
-			} else {
-					var retparent = this;
-					var fun = function(ret) {
-						if(ret !== undefined) {
-							var rid = ret.id === undefined?ret._id:ret.id;
-							if(rid !== undefined) {
-								retparent.parent.get(rid).done(function(value){
-									retparent.setValue(value);
-								});
-							} else { 
-								retparent.setValue(ret);
-							}
-						}
-						return null;
-					};
-					this.resultStack.push(fun);
-					return this;
-                        }
+			}
+			if(id !== undefined) {
+				this.parent.get(this.value, options).done(function(value){
+					retparent.setValue(value);
+				});
+				return null;
+			} else { 
+				return this;
+			}
 		} else {
-			return this.parent.get(id, options);
+			var fun = function(ret) {
+				if(ret !== undefined || id !== undefined) {
+					var rid;
+					if(id === undefined) {
+						rid = ret.id === undefined?ret._id:ret.id;
+					} else {
+						rid = id;
+					}
+					if(rid !== undefined) {
+						retparent.parent.get(rid).done(function(value){
+							retparent.setValue(value);
+						});
+					} else { 
+						retparent.setValue(ret);
+					}
+				}
+				return null;
+			};
+			this.resultStack.push(fun);
+			return this;
 		}
         };
         this.put = function (doc, options) {
-		if(doc === undefined) {
-			if(this.value !== null) {
-				id = this.value.id === undefined?this.value._id:this.value.id;
-				if(id !== undefined) {
-					return this.parent.put(this.value);
-				} else { 
-					return this;
-				}
-			} else {
-					var retparent = this;
-					var fun = function(ret) {
-						if(ret !== undefined) {
-							var rid = ret.id === undefined?ret._id:ret.id;
-							if(rid !== undefined) {
-								retparent.parent.put(ret).done(function(value){
-									retparent.setValue(value);
-								});
-							} else { 
-								retparent.setValue(ret);
-							}
-						}
-						return null;
-					};
-					this.resultStack.push(fun);
-					return this;
-                        }
+		var retparent = this;
+		if(this.value !== null && resultStack.length === 0) {
+			if(doc === undefined) {
+				this.value = doc;
+			}
+			id = this.value.id === undefined?this.value._id:this.value.id;
+			if(id !== undefined) {
+				this.parent.put(this.value, options).done(function(value){
+					retparent.setValue(value);
+				});
+				return null;
+			} else { 
+				return this;
+			}
 		} else {
-			return this.parent.put(doc, options);
+			var fun = function(ret) {
+				if(doc !== undefined) {
+					ret = doc;
+				}
+				if(ret !== undefined) {
+					var rid = ret.id === undefined?ret._id:ret.id;
+					if(rid !== undefined) {
+						retparent.parent.put(ret, options).done(function(value){
+							retparent.setValue(value);
+						});
+					} else { 
+						retparent.setValue(ret);
+					}
+				}
+				return null;
+			};
+			this.resultStack.push(fun);
+			return this;
 		}
         };
 	this.removeDB = function () {
-		return this.parent.removeDB();
+		var retparent = this;
+		var fun = function(ret) {
+			if(ret !== undefined) {
+				return retparent.parent.removeDB();
+			}
+		};
+		this.resultStack.push(fun);
+		return this;
 	};
 	this.bulkDocs = function (docs, options) {
-		return this.parent.bulkDocs(docs, options);
+		if(docs !== undefined) {
+			var retparent = this;
+			var fun = function(ret) {
+				if(ret !== undefined && ret instanceof Array) {
+						retparent.parent.bulkDocs(ret, options).done(function(value){
+							retparent.setValue(value);
+						});
+				} else {
+					retparent.setValue(ret);
+				}
+				return null;
+			};
+			this.resultStack.push(fun);
+			return this;
+		} else {
+			return this.parent.bulkDocs(docs, options);
+		}
+	};
+	this.allDocs = function (options) {
+		var retparent = this;
+		var fun = function(ret) {
+			retparent.parent.allDocs(options).done(function(value){
+				retparent.setValue(value);
+			});
+			return null;
+		};
+		this.resultStack.push(fun);
+		return this;
 	};
 	this.remove = function (docid, rev) {
 		if(docid === undefined) {
@@ -387,9 +448,25 @@ var SundayDataReturn = function() {
 		}
 	};
 	this.query = function (fun, options) {
-		return this.parent.query(fun, options);
+		var retparent = this;
+		var rfun = function(ret) {
+			retparent.parent.query(fun, options).done(function(value){
+				retparent.setValue(value);
+			});
+			return null;
+		};
+		this.resultStack.push(rfun);
+		return this;
 	};
 	this.replicate = function (url) {
-		return this.parent.replicate(url);
+		var retparent = this;
+		var fun = function(ret) {
+			retparent.parent.replicate(url).done(function(value){
+				retparent.setValue(value);
+			});
+			return null;
+		};
+		this.resultStack.push(fun);
+		return this;
 	};
 };

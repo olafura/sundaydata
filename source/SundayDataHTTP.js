@@ -78,23 +78,27 @@ enyo.kind({
 		if (ajax === undefined) {
 			ajax = new enyo.Ajax();
 		}
-		ajax.url = this.host + "/" + db + "/";
+		ajax.url = this.host + "/" + this.database + "/";
+		ajax.cacheBust = false;
 		ajax.go();
 		return ajax;
 	},
 	put: function (doc, options, ajax) {
+		console.log("put");
 		if (ajax === undefined) {
 			ajax = new enyo.Ajax();
 		}
-		ajax.url = this.host + "/" + this.database + "/";
-		ajax.method = "POST";
+		console.log("ajax",ajax);
 		ajax.contentType = "application/json";
 		ajax.cacheBust = false;
+		ajax.url = this.host + "/" + this.database + "/";
+		ajax.method = "POST";
 		ajax.postBody = JSON.stringify(doc);
 		ajax.go();
 		return ajax;
 	},
 	bulkDocs: function (docs, options, ajax) {
+		console.log("bulk");
 		if (ajax === undefined) {
 			ajax = new enyo.Ajax();
                 }

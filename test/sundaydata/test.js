@@ -62,7 +62,7 @@ enyo.kind({
 		onFinish: "", // sent with result as each test completes.
 		onFinishAll: "" // sent when all tests are finished.
 	},
-	timeout: 300,
+	timeout: 500,
 	timeoutMessage: "timed out",
 	/** @public
 		Replaces the current test timeout with
@@ -147,6 +147,7 @@ enyo.kind({
 		try {
 			// actual test code invoked here
 			this.beforeEach();
+			this.startTime = +new Date();
 			this[inTestName]();
 		} catch(x) {
 			this.finish(x);
@@ -189,13 +190,15 @@ enyo.kind({
                 this._assert(name, passed, "'"+a+"' is in '"+JSON.stringify(b)+"'", arguments.callee.caller.toString());
         },
         _assert: function(name, passed, message, caller) {
-                if(passed) {
+		this.endTime = +new Date();
+		if(passed) {
 			this.results = {
 				suite: this.kindName,
 				name: this.name,
 				assertname: name,
 				passed: true,
-				logs: this.logMessages
+				logs: this.logMessages,
+				runtime: this.endTime - this.startTime
 			} 
                 } else {
 			this.results = {
@@ -230,7 +233,7 @@ enyo.kind({
 			suite: this.kindName,
 			name: this.name,
 			passed: !inMessage,
-			logs: this.logMessages
+			logs: this.logMessages,
 		};
 		if (inMessage) {
 			if ((typeof inMessage) === "string") { // In message could be a string...
@@ -339,7 +342,7 @@ enyo.kind({
 		var results = inEvent.results;
 		var e = results.exception;
 		var info = this.$.group.$[results.name];
-		var content = "<b>" + results.assertname + "</b>: " + (results.passed ? "PASSED" : results.message);
+		var content = "<div style='width: 50%;float: left'><b>" + results.assertname + "</b>: " + (results.passed ? "PASSED" : results.message) + "</div><div style='text-align: right; width: 45%; float: right'><b>Execution Time:</b> " + results.runtime + " ms</div>";
 		if (e) {
 			// If we have an exception include the stack trace or file/line number.
 			if (e.stack) {

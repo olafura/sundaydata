@@ -45,7 +45,7 @@ enyo.kind({
 		}
 	},
 	success: function (ev) {
-		console.log("onsuccess", ev);
+		//console.log("onsuccess", ev);
 		this.idb = ev.target.result;
 		var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ);
 		var datastore = txn.objectStore(this.DOC_STORE).openCursor();
@@ -181,9 +181,9 @@ enyo.kind({
 			var async = new enyo.Async();
 			var parent = this;
 			async.response(function (inSender, inResponse) {
-				console.log("inSender", inSender);
-				console.log("inResponse", inResponse);
-				console.log("parent", parent);
+				//console.log("inSender", inSender);
+				//console.log("inResponse", inResponse);
+				//console.log("parent", parent);
 				for (var doc in inResponse.rows) {
 					var rmatch = inResponse.rows[doc].id.match(/^_design\/(.*)/);
 					if (rmatch === null) {
@@ -250,7 +250,7 @@ enyo.kind({
 					req.onerror = enyo.bind(this, this.handleerror, this.dbcallback);
 					req.onupgradeneeded = enyo.bind(this, this.upgradeneededview, newindexes);
 					req.onblocked = function (e) {
-						console.log("got blocked:" + e);
+						//console.log("got blocked:" + e);
 					};
 				}
 			}
@@ -460,7 +460,7 @@ enyo.kind({
 			this.returnarray[allid] = [];
 			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ);
 			var datastore = txn.objectStore(this.DOC_STORE).openCursor();
-			datastore.onsuccess = enyo.bind(this, this.allDocssuccess, async, allid);
+			datastore.onsuccess = enyo.bind(this, this.allDocssuccess, async, allid, options);
 			datastore.onerror = enyo.bind(this, this.handleerror, async);
 		} else {
 			this.preque.push({
@@ -470,22 +470,24 @@ enyo.kind({
 		}
 		return async;
 	},
-	allDocssuccess: function (async, allid, ev) {
+	allDocssuccess: function (async, allid, options, ev) {
 		var cursor = event.target.result;
 		if (cursor) {
 			var row = {
 				key: cursor.key,
 				id: cursor.primaryKey,
-				value: cursor.value
+				value: {rev: cursor.value._localrev},
+				doc: cursor.value
 			};
-			if (row.value._deleted === undefined) {
-				delete row.value._revhistory;
+			if (row.doc._deleted === undefined) {
+				delete row.doc._revhistory;
 				var view = /^_view_.*/;
-				for (var field in row.value) {
+				for (var field in row.doc) {
 					if (field.match(view) !== null) {
-						delete row.value[field];
+						delete row.doc[field];
 					}
 				}
+				if(options !== undefined && !options.include_docs) delete row.doc;
 				this.returnarray[allid].push(row);
 			}
 			cursor["continue"]();
