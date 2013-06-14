@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Sundaydata by olafura</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/olafura/sundaydata">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/olafura/sundaydata/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/olafura/sundaydata/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Sundaydata</h1>
+          <p>SundayData is a fast, intelligent and light way of storing data in you browser and using the power of CouchDB.</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/olafura">olafura</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="http://twitter.com/#!/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>
+<a name="sundaydata---the-javascript-database-library-that-scales-and-syncs-alpha" class="anchor" href="#sundaydata---the-javascript-database-library-that-scales-and-syncs-alpha"><span class="octicon octicon-link"></span></a><a href="http://github.com/olafura/sundaydata">SundayData</a> - The Javascript Database Library that Scales and Syncs <em>ALPHA</em>
+</h1>
+
+<p>SundayData was born out of the need to handle more data that Todo list and other simple applications.</p>
+
+<p>If you rely complex syncing with CouchDB and don't have a lot of data then I would recommend using <a href="http://pouchdb.com/">PouchDB</a>. They really take care to do things right in replicating to and from CouchDB and it's not a easy job and very expensive. So I don't do that, I take as many shortcuts as I can, I act more like a client library with awesome offline support. This library builds on the great work PouchDB done.</p>
+
+<p>Please consult <a href="http://wiki.apache.org/couchdb/HTTP_Document_API">CouchDB API</a> to understand the foundation of SundayData api and most return values.</p>
+
+<h2>
+<a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features</h2>
+
+<ul>
+<li><p>Did I mention it scales, I've tested it with 25 thousand replicated entries that were then put through a simple view. I would not recommend that for people as it will slow down your computer, for now at least.</p></li>
+<li><p>View function caching, the library takes care of running all of your view functions that you saved in the database on all of the new and modified entries. And if you change the view function it runs it on all of them again.</p></li>
+<li><p>Supports chaining with deferred actions. So db.get(theID).remove().done() works, with the done at the end writing the result of the action on the console of your browser.</p></li>
+<li><p>It tries to be as small as possible, now around 54k (15k gzipped).</p></li>
+<li><p>It uses Enyojs core library to make it very readable source, though the inherit nature of IndexedDB adds some complexity that is not easy to get around.</p></li>
+</ul><h2>
+<a name="future" class="anchor" href="#future"><span class="octicon octicon-link"></span></a>Future</h2>
+
+<p>Create a simple interface to the library that makes it easy to update the dom as thing change in the database and other nice things. I have a solution for this but I want to keep the core library pretty minimal and well in line with how CouchDB works so not to hide away errors and other things about how it works ( like using rev for changes and other things ).</p>
+
+<p>Make the replication be continuous and faster.</p>
+
+<p>Get things to the point where I can remove the Alpha label of it, a lot of testing and checking how different browsers handle it.</p>
+
+<p>Make it easy to use from Enyojs, the focus until now has to make a really good library with a great api.</p>
+
+<h2>
+<a name="questions" class="anchor" href="#questions"><span class="octicon octicon-link"></span></a>Questions</h2>
+
+<p>Join the <a href="https://groups.google.com/forum/#!forum/sundaydata">SundayData Mailing List</a>.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-41742972-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
