@@ -110,7 +110,7 @@ enyo.kind({
 						this.setUsername(usernamepassword[0]);
 						this.setPassword(usernamepassword[1]);
 					}
-					this.setHost(httpresults[1]);
+					this.setHost(httpresults[1].replace(httpresults[2],""));
 					this.setDatabase(httpresults[3]);
 					this.setDataStore("SundayDataHTTP");
 				}
