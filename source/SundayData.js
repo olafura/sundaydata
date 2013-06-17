@@ -394,7 +394,7 @@ var SundayDataReturn = function() {
 	};
 	this.get = function (id, options) {
 		var retparent = this;
-		if(this.value !== null && resultStack.length === 0) {
+		if(this.value !== null && this.resultStack.length === 0) {
 			if(id === undefined) {
 				id = this.value.id === undefined?this.value._id:this.value.id;
 			}
@@ -431,7 +431,7 @@ var SundayDataReturn = function() {
 	};
 	this.put = function (doc, options) {
 		var retparent = this;
-		if(this.value !== null && resultStack.length === 0) {
+		if(this.value !== null && this.resultStack.length === 0) {
 			if(doc === undefined) {
 				this.value = doc;
 			}
