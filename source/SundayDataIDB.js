@@ -78,7 +78,7 @@ enyo.kind({
 			if (pq[i].type === "builkDocs") {
 				this.bulkDocs(pq[i].docs, pq[i].async);
 			} else if (pq[i].type === "allDocs") {
-				this.allDocs(null, pq[i].async);
+				this.allDocs(pq[i].options, pq[i].async);
 			} else if (pq[i].type === "put") {
 				this.put(pq[i].doc, pq[i].options, pq[i].async);
 			} else if (pq[i].type === "get") {
@@ -137,7 +137,7 @@ enyo.kind({
 	},
 	//* @public
 	removeDB: function (async) {
-                this.idb.close();
+		this.idb.close();
 		var req = enyo.global.indexedDB.deleteDatabase(this.database);
 
 		req.onsuccess = enyo.bind(this, this.removeDBsuccess, async);
@@ -270,11 +270,19 @@ enyo.kind({
 		var putdoc = {};
 		if (olddoc) {
 			var olddoc_deleted = olddoc._deleted ? true : false;
+			var oldrev = olddoc._rev !== undefined ? olddoc._rev[0] : 0;
+			var newrev = doc._rev !== undefined ? doc._rev[0] : 0;
+			var newer_rev = newrev > oldrev;
 
-			if (olddoc._localrev !== undefined || olddoc_deleted) {
-				if (olddoc_deleted || olddoc._localrev === doc._localrev || parseInt(doc._localrev[0], 10) > parseInt(olddoc._localrev[0], 10)) {
+			if (newer_rev || olddoc._localrev !== undefined || olddoc_deleted) {
+				if (newer_rev || olddoc_deleted || olddoc._localrev === doc._localrev || parseInt(doc._localrev[0], 10) > parseInt(olddoc._localrev[0], 10)) {
 					if (!olddoc_deleted) {
-						var revnumber = parseInt(doc._localrev[0], 10) + 1;
+						var revnumber;
+						if(newer_rev) {
+							revnumber = parseInt(olddoc._localrev[0], 10) + 1;
+						} else {
+							revnumber = parseInt(doc._localrev[0], 10) + 1;
+						}
 						doc._localrev = revnumber + "-" + Math.uuid(32, 16).toLowerCase();
 					}
 					doc._revhistory = olddoc;
@@ -452,6 +460,8 @@ enyo.kind({
 		}
 	},
 	allDocs: function (options, async) {
+		//console.log("caller", arguments.callee.caller);
+		//console.log("options",options);
 		if (async === undefined) {
 			async = new enyo.Async();
 		}
@@ -465,6 +475,7 @@ enyo.kind({
 		} else {
 			this.preque.push({
 				type: "allDocs",
+				options: options,
 				async: async
 			});
 		}

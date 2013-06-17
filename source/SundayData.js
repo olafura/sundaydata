@@ -1,15 +1,90 @@
+/**
+	_SundayData_ is database library that makes it easy store and
+	sync data. It's meant to deal with a lot of data without
+	breaking down.
+
+	It has a simple api:
+
+		db = new SundayData("idb://testdb/");
+		db.put({_id: "test1", somevar: "somedata"}).get().done(
+			function(value) {
+				console.log(value.somevar);
+			}
+		);
+
+	You don't have to use chaining or can use the returned object to
+	add to the chaining stack:
+		
+		db = new SundayData("idb://testdb");
+		var testing = db.put({_id: "test2", somevar: "somedata"});
+		testing.get();
+		testing.done();
+	
+	The stack is executed according to when it is put on the stack
+	and it doesn't have to worry about when the data gets to it.
+	If an error arrives then it goes through the stack, so it's good
+	to have a .done at the end so you can log it to the javascript
+	console.
+
+	To remove an entry you need to have the _rev number and also to
+	update it again with the put. So it's usefull to use something
+	like this:
+		
+		db = new SundayData("idb://testdb");
+		db.get("test2").remove();
+
+	The api works under the assumption that you intend to use what
+	came as the return of the previous command on the stack. So
+	this works as to change and entry:
+
+		db = new SundayData("idb://testdb");
+		db.get("test1").done(function(value){
+			value.newvariable = "this is awesome";
+			return value;
+		}).done();
+
+	Actually works and if it can't find the object because it does
+	not exist or because you removed it then you get an error.
+		
+		{ error: "Not Found"} 
+
+	So have fun messing with it
+*/
 enyo.kind({
 	name: "SundayData",
 	kind: "enyo.Component",
 	published: {
+		/**
+			This is usually filled out by setting the url, but
+			can of course be set manually. The current possible
+			values are SundayDataIDB and SundayDataHTTP.
+		*/
 		dataStore: "",
+		/**
+			This is the url you supply new SundayData(url) or
+			by doing db.setUrl(), either is perfectly valid.
+		*/
 		url: "",
+		/**     
+			This holds the database name either idb://database/
+			or http://host/database/, support for more complex
+			url mapping is possible with setting this variable
+			with db.setDatabase(database) and setting the host
+			by db.setHost("http://host/complex/url/dbs").
+			The url varible is mostly for convenience.
+		*/
 		database: "",
 		username: "",
 		password: "",
+		/**
+			This is the base url in HTTP mode with the database
+			name added after.
+		*/
 		host: ""
 	},
-        data: null,
+	//* @protected
+	data: null,
+	//* @protected
 	constructor: function (url) {
 		this.inherited(arguments);
 		if (url !== undefined && typeof url === "string") {
@@ -18,7 +93,7 @@ enyo.kind({
 	},
 	setUrl: function (url) {
 		var idbcheck = /idb\:\/\/(\w*)\/?/;
-		var httpcheck = /(https?\:\/\/(\w*\:\w*@)?\w*\:?\d*)\/(\w*)/;
+		var httpcheck = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/;
 		if (typeof url === "string") {
 			var idbresults = url.match(idbcheck);
 			if (idbresults !== null) {
@@ -42,6 +117,7 @@ enyo.kind({
 			}
 		}
 	},
+	//* @protected
 	dataStoreChanged: function () {
 		if (this.data) {
 			this.data.destroy();
@@ -55,6 +131,10 @@ enyo.kind({
 			this.render();
 		}
 	},
+	/**
+		_removeDB_ works on the current database, it's very perminent
+		so use with care.
+	*/
 	removeDB: function (async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -80,6 +160,16 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_put_ is used to create or update an entry. It takes
+		and javascript Object, you use _id for the identifier
+		and _rev for revision number. You don't have to suppy
+		the _id, it get set with an unique string and gets
+		return to you. So have a done function at the end to
+		catch it.
+
+			db.put({_id: "test1"});
+	*/
 	put: function (doc, options, async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -100,6 +190,11 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_get_ is used get your entry with the _id
+
+			db.put({_id: "test1"});
+	*/
 	get: function (docid, domid, async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -210,9 +305,12 @@ enyo.kind({
 	},
 	replicate: function (url, async) {
 		if(this.data) {
+			if(async === undefined) {
+				async = new this.data.async();	
+			}
 			var newstore = {};
 			var idbcheck = /idb\:\/\/(\w*)\/?/;
-			var httpcheck = /(https?\:\/\/(\w*\:\w*@)?\w*\:?\d*)\/(\w*)/;
+			var httpcheck = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/;
 			var idbresults = url.match(idbcheck);
 			if (idbresults !== null) {
 				if (idbresults[1] !== "") {
@@ -222,23 +320,15 @@ enyo.kind({
 				}
 			} else {
 				var httpresults = url.match(httpcheck);
-				if (httpresults !== null && httpresults[1] !== "" && httpresults[2] !== "") {
+				if (httpresults !== null && httpresults[1] !== "" && httpresults[3] !== "") {
 					newstore.dataStore = "SundayDataHTTP";
-					if(httpresults.length === 4) {
-						newstore.host = httpresults[1];
-						newstore.database = httpresults[3];
-						usernamepassword = httpresults[2];
-						usernamepassword = usernamepassword.replace(/@$/,"").split(":");
-						async = new enyo.Ajax();
-					} else {
-						newstore.host = httpresults[1];
-						newstore.database = httpresults[2];
-						async = new enyo.Ajax();
-					}
+					newstore.host = httpresults[1];
+					newstore.database = httpresults[3];
+					async = new enyo.Ajax();
 				}
 			}
-			var from = enyo.createFromKind(newstore.DataStore, newstore);
-			//console.log(from);
+			var from = enyo.createFromKind(newstore.dataStore, newstore);
+			//console.log("from",from);
 			var parent = this.data;
 			async.response(function (inSender, inResponse) {
 				//console.log("inSender", inSender);
@@ -246,11 +336,12 @@ enyo.kind({
 				//console.log("parent", parent);
 				var docs = [];
 				for (var doc in inResponse.rows) {
+					delete inResponse.rows[doc].doc._localrev;
 					docs.push(inResponse.rows[doc].doc);
 				}
 				parent.bulkDocs(docs);
 			});
-			from.allDocs("include_docs=true&update_seq=true", async);
+			from.allDocs({include_docs:true, update_seq:true}, async);
 		} else {
 		}
 	}
@@ -265,13 +356,13 @@ enyo.createFromKind = function (inKind, inParam) {
 };
 
 var SundayDataReturn = function() {
-        this.resultStack = [];
-        this.value = null;
+	this.resultStack = [];
+	this.value = null;
 	this.parent = null;
-        this.setValue = function(value) {
+	this.setValue = function(value) {
 		this.value = value;
-                this._results(value); 
-        };
+		this._results(value); 
+	};
 	this.done = function (fun) {
 		if(fun === undefined) { 
 			fun = function(value) { console.log("value:",value); return value; };
@@ -280,9 +371,9 @@ var SundayDataReturn = function() {
 			this.resultStack.push(fun);
 		} else {
 			var ret = fun(value);
-                        if(ret !== undefined) {
+			if(ret !== undefined) {
 				this.setValue(ret);
-                        } else {
+			} else {
 				this.setValue(this.value);
 			}
 		}
@@ -292,16 +383,16 @@ var SundayDataReturn = function() {
 		if(this.resultStack.length > 0) {
 			var fun = this.resultStack.shift();
 			var ret = fun(value);
-                        if(ret === null) {
+			if(ret === null) {
 				//console.log("wait");	
-                        } else if(ret !== undefined) {
+			} else if(ret !== undefined) {
 				this.setValue(ret);
 			} else {
 				this.setValue(this.value);
 			}
 		}
 	};
-        this.get = function (id, options) {
+	this.get = function (id, options) {
 		var retparent = this;
 		if(this.value !== null && resultStack.length === 0) {
 			if(id === undefined) {
@@ -337,8 +428,8 @@ var SundayDataReturn = function() {
 			this.resultStack.push(fun);
 			return this;
 		}
-        };
-        this.put = function (doc, options) {
+	};
+	this.put = function (doc, options) {
 		var retparent = this;
 		if(this.value !== null && resultStack.length === 0) {
 			if(doc === undefined) {
@@ -373,7 +464,7 @@ var SundayDataReturn = function() {
 			this.resultStack.push(fun);
 			return this;
 		}
-        };
+	};
 	this.removeDB = function () {
 		var retparent = this;
 		var fun = function(ret) {
@@ -442,7 +533,7 @@ var SundayDataReturn = function() {
 					};
 					this.resultStack.push(fun);
 					return this;
-                        }
+			}
 		} else {
 			return this.parent.remove(docid, rev);
 		}
