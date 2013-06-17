@@ -1414,7 +1414,7 @@ t["continue"]();
 unrollpreque: function() {
 pq = this.preque;
 var e = pq.length;
-for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(null, pq[t].async) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async) : pq[t].type === "query" && this.remove(pq[t].fun, pq[t].options, pq[t].async);
+for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(pq[t].options, pq[t].async) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async) : pq[t].type === "query" && this.remove(pq[t].fun, pq[t].options, pq[t].async);
 this.preque = [];
 },
 versioncomplete: function(e) {
@@ -1515,11 +1515,11 @@ return n;
 putupdate: function(e, t, n) {
 var r = n.target.result, i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), s = {};
 if (r) {
-var o = r._deleted ? !0 : !1;
-if (r._localrev !== undefined || o) if (o || r._localrev === t._localrev || parseInt(t._localrev[0], 10) > parseInt(r._localrev[0], 10)) {
+var o = r._deleted ? !0 : !1, u = r._rev !== undefined ? r._rev[0] : 0, a = t._rev !== undefined ? t._rev[0] : 0, f = a > u;
+if (f || r._localrev !== undefined || o) if (f || o || r._localrev === t._localrev || parseInt(t._localrev[0], 10) > parseInt(r._localrev[0], 10)) {
 if (!o) {
-var u = parseInt(t._localrev[0], 10) + 1;
-t._localrev = u + "-" + Math.uuid(32, 16).toLowerCase();
+var l;
+f ? l = parseInt(r._localrev[0], 10) + 1 : l = parseInt(t._localrev[0], 10) + 1, t._localrev = l + "-" + Math.uuid(32, 16).toLowerCase();
 }
 t._revhistory = r, s = i.objectStore(this.DOC_STORE).put(t), s.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), s.onerror = enyo.bind(this, this.handleerror, e);
 } else e.responders.length === 0 ? e.response(function(e, t) {
@@ -1644,6 +1644,7 @@ var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), i = r.objectS
 i.onsuccess = enyo.bind(this, this.allDocssuccess, t, n, e), i.onerror = enyo.bind(this, this.handleerror, t);
 } else this.preque.push({
 type: "allDocs",
+options: e,
 async: t
 });
 return t;
@@ -1782,7 +1783,9 @@ kind: "DataLayout",
 published: {
 database: "",
 host: "",
-dbcallback: {}
+dbcallback: {},
+username: "",
+password: ""
 },
 async: enyo.Ajax,
 components: [ {
@@ -1790,9 +1793,12 @@ kind: "Signals",
 onCommit: "commit"
 } ],
 returnarray: {},
+authHeader: function() {
+var e = "Basic " + binb2b64(str2binb(this.username + ":" + this.password));
+return e;
+},
 commit: function(e, t) {
 var n = t.dispatchTarget;
-console.log("inSender", e), console.log("inEvent", t), console.log("dtarget", n);
 },
 handleerror: function(e, t) {
 e.responders.length === 0 ? e.response(function(e, n) {
@@ -1813,33 +1819,45 @@ reason: t.target
 }
 });
 },
-constructor: function(e, t) {
+constructor: function(e, t, n, r) {
 this.inherited(arguments), this.start();
 },
-start: function(e, t) {
-console.log("this", this), console.log("container", this.container), e === undefined && t === undefined && this.container !== undefined && (this.host = this.container.host, this.database = this.container.database), typeof t == "string" && t && (this.database = t), typeof e == "string" && e && (this.host = e), console.log("database", this.database), console.log("host", this.host), this.dbcallback = new enyo.Ajax({
+start: function(e, t, n, r) {
+e === undefined && t === undefined && this.container !== undefined && (this.host = this.container.host, this.database = this.container.database, this.username = this.container.username, this.password = this.container.password), typeof t == "string" && t && (this.database = t), typeof e == "string" && e && (this.host = e), typeof n == "string" && n && (this.username = n), typeof r == "string" && r && (this.password = r), this.dbcallback = new enyo.Ajax({
 url: this.host + "/" + this.database + "/",
 method: "PUT",
 contentType: "application/json",
 cacheBust: !1
+}), this.username !== "" && this.password !== "" && (this.dbcallback.headers = {
+Authorization: this.authHeader()
 }), this.dbcallback.go();
 },
 removeDB: function(e) {
-return e === undefined && (e = new enyo.Ajax), e.url = this.host + "/" + this.database + "/", e.cacheBust = !1, e.go(), e;
+return e === undefined && (e = new enyo.Ajax), e.url = this.host + "/" + this.database + "/", e.cacheBust = !1, this.username !== "" && this.password !== "" && (e.headers = {
+Authorization: this.authHeader()
+}), e.go(), e;
 },
 put: function(e, t, n) {
-return console.log("put"), n === undefined && (n = new enyo.Ajax), console.log("ajax", n), n.contentType = "application/json", n.cacheBust = !1, n.url = this.host + "/" + this.database + "/", n.method = "POST", n.postBody = JSON.stringify(e), n.go(), n;
+return n === undefined && (n = new enyo.Ajax), n.contentType = "application/json", n.cacheBust = !1, n.url = this.host + "/" + this.database + "/", n.method = "POST", n.postBody = JSON.stringify(e), this.username !== "" && this.password !== "" && (n.headers = {
+Authorization: this.authHeader()
+}), n.go(), n;
 },
 bulkDocs: function(e, t, n) {
-return console.log("bulk"), n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_bulk_docs", n.method = "POST", n.contentType = "application/json", n.cacheBust = !1, n.go(JSON.stringify({
+return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_bulk_docs", n.method = "POST", n.contentType = "application/json", n.cacheBust = !1, n.postBody = JSON.stringify({
 docs: e
-})), n;
+}), this.username !== "" && this.password !== "" && (n.headers = {
+Authorization: this.authHeader()
+}), n.go(), n;
 },
 get: function(e, t) {
-return t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/" + e, t.method = "GET", t.cacheBust = !1, t.go(), t;
+return t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/" + e, t.method = "GET", t.cacheBust = !1, this.username !== "" && this.password !== "" && (t.headers = {
+Authorization: this.authHeader()
+}), t.go(), t;
 },
 allDocs: function(e, t) {
-return t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_all_docs", t.method = "GET", t.contentType = "application/json", t.cacheBust = !1, t.go(e), t;
+return t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_all_docs", t.method = "GET", t.contentType = "application/json", t.cacheBust = !1, this.username !== "" && this.password !== "" && (t.headers = {
+Authorization: this.authHeader()
+}), t.go(e), t;
 },
 query: function(e, t, n) {
 var r, i;
@@ -1847,13 +1865,19 @@ if (typeof e == "string") {
 var s = e.split("/");
 r = s[0], i = s[1];
 }
-return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_design/" + r + "/_view/" + i, n.method = "GET", n.contentType = "application/json", n.cacheBust = !1, n.go(JSON.stringify(t)), n;
+return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_design/" + r + "/_view/" + i, n.method = "GET", n.contentType = "application/json", n.cacheBust = !1, this.username !== "" && this.password !== "" && (n.headers = {
+Authorization: this.authHeader()
+}), n.go(JSON.stringify(t)), n;
 },
 remove: function(e, t, n) {
-return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/" + e + "?rev=" + t, n.method = "DELETE", n.cacheBust = !1, n.go(), n;
+return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/" + e + "?rev=" + t, n.method = "DELETE", n.cacheBust = !1, this.username !== "" && this.password !== "" && (n.headers = {
+Authorization: this.authHeader()
+}), n.go(), n;
 },
 changes: function(e, t) {
-return e === undefined && (e = 0), t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_changes?since=" + e, t.method = "GET", t.cacheBust = !1, t.go(), t;
+return e === undefined && (e = 0), t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_changes?since=" + e, t.method = "GET", t.cacheBust = !1, this.username !== "" && this.password !== "" && (t.headers = {
+Authorization: this.authHeader()
+}), t.go(), t;
 }
 });
 
@@ -1875,7 +1899,7 @@ constructor: function(e) {
 this.inherited(arguments), e !== undefined && typeof e == "string" && this.setUrl(e);
 },
 setUrl: function(e) {
-var t = /idb\:\/\/(\w*)\/?/, n = /(https?\:\/\/(\w*\:\w*@)?\w*\:?\d*)\/(\w*)/;
+var t = /idb\:\/\/(\w*)\/?/, n = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/;
 if (typeof e == "string") {
 var r = e.match(t);
 if (r !== null) r[1] !== "" && (this.setDatabase(r[1]), this.setDataStore("SundayDataIDB")); else {
@@ -2003,17 +2027,21 @@ r.setValue(t);
 },
 replicate: function(e, t) {
 if (this.data) {
-var n = {}, r = /idb\:\/\/(\w*)\/?/, i = /(https?\:\/\/(\w*\:\w*@)?\w*\:?\d*)\/(\w*)/, s = e.match(r);
+t === undefined && (t = new this.data.async);
+var n = {}, r = /idb\:\/\/(\w*)\/?/, i = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/, s = e.match(r);
 if (s !== null) s[1] !== "" && (n.database = s[1], n.dataStore = "SundayDataIDB", t = new enyo.Async); else {
 var o = e.match(i);
-o !== null && o[1] !== "" && o[2] !== "" && (n.dataStore = "SundayDataHTTP", o.length === 4 ? (n.host = o[1], n.database = o[3], usernamepassword = o[2], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), t = new enyo.Ajax) : (n.host = o[1], n.database = o[2], t = new enyo.Ajax));
+o !== null && o[1] !== "" && o[3] !== "" && (n.dataStore = "SundayDataHTTP", n.host = o[1], n.database = o[3], t = new enyo.Ajax);
 }
-var u = enyo.createFromKind(n.DataStore, n), a = this.data;
+var u = enyo.createFromKind(n.dataStore, n), a = this.data;
 t.response(function(e, t) {
 var n = [];
-for (var r in t.rows) n.push(t.rows[r].doc);
+for (var r in t.rows) delete t.rows[r].doc._localrev, n.push(t.rows[r].doc);
 a.bulkDocs(n);
-}), u.allDocs("include_docs=true&update_seq=true", t);
+}), u.allDocs({
+include_docs: !0,
+update_seq: !0
+}, t);
 }
 }
 }), enyo.createFromKind = function(e, t) {
