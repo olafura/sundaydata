@@ -482,7 +482,7 @@ enyo.kind({
 		return async;
 	},
 	allDocssuccess: function (async, allid, options, ev) {
-		var cursor = event.target.result;
+		var cursor = ev.target.result;
 		if (cursor) {
 			var row = {
 				key: cursor.key,
@@ -541,7 +541,7 @@ enyo.kind({
 
 	},
 	querysuccess: function (async, queryid, fun, ev) {
-		var cursor = event.target.result;
+		var cursor = ev.target.result;
 		if (cursor) {
 			if (!(cursor.key === null && cursor.value["_view_" + fun.replace("/", "_") + "_value"] === null)) {
 				var row = {
