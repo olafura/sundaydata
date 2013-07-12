@@ -16,14 +16,15 @@
     "couchdb",
     "sundaydata"
   ],
-  "dependencies": {
-    "enyo": "2.2"
-  },
   "devDependencies": {
+    "matchdep": "~0.1.1", 
     "grunt": "~0.4",
     "grunt-cli": "~0.1",
     "grunt-contrib-uglify": "~0.1.1",
-    "grunt-contrib-jshint": "~0.1.1"
+    "grunt-contrib-jshint": "~0.1.1",
+    "grunt-regarde": "~0.1.1",
+    "grunt-contrib-connect": "0.1.2",
+    "grunt-contrib-livereload": "0.1.1"
   },
   "maintainers": [
     {
