@@ -39,5 +39,20 @@ enyo.kind({
 				testSD.removeDB();
 			}
 		);
+	},
+	test4: function() {
+                var testid = "test"+Math.uuid(32, 16).toLowerCase();
+                var testSD = new SundayData("idb://"+testid+"/");
+		var assertNotEqual = enyo.bind(this, this.assertNotEqual);
+		var testing = testSD.put({_id: "test4_1", somevar: "somedata"});
+		testing.removeDB().done(
+			function(value) {
+				testSD.setUrl("idb://"+testid+"/");
+				testSD.get("test4_1").done(
+					function(value2) {
+						assertNotEqual("Test that put, get work unchained", value2.somevar, "somedata");	
+				});
+			}
+		);
 	}
 });

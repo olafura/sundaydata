@@ -40,5 +40,20 @@ enyo.kind({
 				testSD.removeDB();
 			}
 		);
-	}
+	},
+	test4: function() {
+                var testid = "test"+Math.uuid(32, 16).toLowerCase();
+                var testSD = new SundayData("http://testcouch:test123@localhost:5984/"+testid+"/");
+		var assertNotEqual = enyo.bind(this, this.assertNotEqual);
+		var testing = testSD.put({_id: "test4_1", somevar: "somedata"});
+		testing.removeDB().done(
+			function(value) {
+				testSD.setUrl("http://testcouch:test123@localhost:5984/"+testid+"/");
+				testSD.get("test4_1").done(
+					function(value2) {
+						assertNotEqual("Test that removeDB works as promised", value2.somevar, "somedata");	
+				});
+			}
+		);
+	} 
 });
