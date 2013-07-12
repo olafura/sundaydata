@@ -1,5 +1,15 @@
 module.exports = function(grunt) {
+
+	require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
+
 	grunt.initConfig({
+		'connect': {
+			all: {
+				options: {
+					port: 8000,
+				}
+			}
+		},
 		'pkg': grunt.file.readJSON('package.json'),
 		'jshint': {
 			options: {
@@ -41,7 +51,7 @@ module.exports = function(grunt) {
 
 			// The numeric exit code.
 			if (code) {
-				grunt.log.writeln('code ' + code);
+				grunt.log.error('code ' + code);
 				done();
 				return;
 			}
@@ -73,15 +83,52 @@ module.exports = function(grunt) {
 
 			// The numeric exit code.
 			if (code) {
-				grunt.log.writeln('code ' + code);
+				grunt.log.error('code ' + code);
 				done();
 				return;
 			}
 		}
 		grunt.util.spawn(options, doneFunction);
 	}); 
-	grunt.loadNpmTasks('grunt-contrib-uglify');
-	grunt.loadNpmTasks('grunt-contrib-jshint');
+
+	grunt.registerTask('testphantom', 'Testing with phantomjs',function() {
+		grunt.log.writeln('start testing phantomjs');
+		var options = {
+			cmd: 'phantomjs',
+			args: ['test/sundaydata/phantomjs-test.js'],
+			fallback: 'Failed to test with phantomjs'
+		};
+		var done = this.async();
+		function doneFunction(error, result, code) {
+			grunt.log.writeln('doneFunction called');
+			if (error) {
+				grunt.log.writeln('error ' + String(error));
+				grunt.fail(error);
+				done();
+				return;
+			}
+
+			if (result) {
+				grunt.log.writeln('result ' + String(result));
+				if(String(result).match(/SundayData tests passed!/) === null) {
+					grunt.log.error("Failed");
+				}
+				done();
+				return;
+			}
+
+			// The numeric exit code.
+			if (code) {
+				grunt.log.error('code ' + code);
+				done();
+				return;
+			}
+		}
+		grunt.util.spawn(options, doneFunction);
+	});
+
+        grunt.registerTask('server', ['connect:all:keepalive']);
+        grunt.registerTask('test', ['connect','testphantom']);
 
 	// Default task.
 	grunt.registerTask('default', ['jshint', 'minifyenyostyle', 'uglify']);
