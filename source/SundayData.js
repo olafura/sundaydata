@@ -74,7 +74,18 @@ enyo.kind({
 			The url varible is mostly for convenience.
 		*/
 		database: "",
+		/**
+			This is used for the HTTP mode where you can use
+			it to log in to CouchDB. 
+		*/
 		username: "",
+		/**	
+			This is for the password but it's not adviced to
+			use it over http use https when going over the
+			internet as people can use the hash that is sent
+			to log in. 
+			http://security.stackexchange.com/questions/988/is-basic-auth-secure-if-done-over-https
+		*/
 		password: "",
 		/**
 			This is the base url in HTTP mode with the database
@@ -91,9 +102,10 @@ enyo.kind({
 			this.setUrl(url);
 		}
 	},
+	//* @public
 	setUrl: function (url) {
-		var idbcheck = /idb\:\/\/(\w*)\/?/;
-		var httpcheck = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/;
+		var idbcheck = /idb\:\/\/([\w\-]+)\/?/;
+		var httpcheck = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/;
 		if (typeof url === "string") {
 			var idbresults = url.match(idbcheck);
 			if (idbresults !== null) {
@@ -103,15 +115,15 @@ enyo.kind({
 				}
 			} else {
 				var httpresults = url.match(httpcheck);
-				if (httpresults !== null && httpresults[1] !== "" && httpresults[2] !== "") {
-					if(httpresults[2] !== undefined) {
-						usernamepassword = httpresults[2];
+				if (httpresults !== null && httpresults[1] !== "" && httpresults[4] !== "") {
+					if(httpresults[3] !== undefined) {
+						usernamepassword = httpresults[3];
 						usernamepassword = usernamepassword.replace(/@$/,"").split(":");
 						this.setUsername(usernamepassword[0]);
 						this.setPassword(usernamepassword[1]);
 					}
-					this.setHost(httpresults[1].replace(httpresults[2],""));
-					this.setDatabase(httpresults[3]);
+					this.setHost(httpresults[1].replace(httpresults[3],""));
+					this.setDatabase(httpresults[4]);
 					this.setDataStore("SundayDataHTTP");
 				}
 			}
@@ -131,9 +143,12 @@ enyo.kind({
 			this.render();
 		}
 	},
+	//* @public
 	/**
 		_removeDB_ works on the current database, it's very perminent
 		so use with care.
+
+			db.removeDB();
 	*/
 	removeDB: function (async) {
 		if(this.data) {
@@ -152,8 +167,14 @@ enyo.kind({
 				return response;
 			});
 			async.response(function (inSender, inResponse) {
-				ret.setValue(inResponse);
 				ret.parent.data.destroy();
+				ret.parent.dataStore = "";
+				ret.parent.url = "";
+				ret.parent.database = "";
+				ret.parent.username = "";
+				ret.parent.password = "";
+				ret.parent.host = "";
+				ret.setValue(inResponse);
 			});
 			this.data.removeDB(async);
 			return ret;
@@ -168,7 +189,7 @@ enyo.kind({
 		return to you. So have a done function at the end to
 		catch it.
 
-			db.put({_id: "test1"});
+			db.put({_id: "test1"}).done();
 	*/
 	put: function (doc, options, async) {
 		if(this.data) {
@@ -193,7 +214,7 @@ enyo.kind({
 	/**
 		_get_ is used get your entry with the _id
 
-			db.put({_id: "test1"});
+			db.put({_id: "test1"}).done();
 	*/
 	get: function (docid, domid, async) {
 		if(this.data) {
@@ -218,6 +239,20 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_allDocs_ returns the name of all the entries and their
+		revision number. It has some options like
+		include_docs: true to get the document with it.
+
+			db.allDocs({include_docs: true}).done(
+				function(value){
+					for(var i in value.rows) {
+						console.log("Doc id: "+value.rows[i].id);
+						console.log("Doc content: "+JSON.stringify(value.rows[i].doc));
+					}
+				}
+			);
+	*/
 	allDocs: function (options, async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -238,6 +273,17 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_bulkDocs_ is used to send many docs at the same time.
+		It returns the revision numbers and ids. Also if some
+		error. It supports all_or_nothing in the HTTP mode for
+		now, hopefully in the idb mode soon.
+
+			var docs = [{"_id": "0", "string":"test"},
+				{"_id":"1", "string":"test"},
+				{"_id":"2", "string":"test"}];
+			db.bulkDocs(docs).done();
+	*/
 	bulkDocs: function (docs, options, async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -258,6 +304,11 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_remove_ deletes the entry with the docid.
+
+			db.remove("docid");
+	*/
 	remove: function (docid, rev, async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -283,6 +334,11 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_query_ is used to call a stored view function
+
+			db.query("thedesign/theview").done();
+	*/
 	query: function (fun, options, async) {
 		if(this.data) {
 			if(async === undefined) {
@@ -303,51 +359,111 @@ enyo.kind({
 		} else {
 		}
 	},
+	/**
+		_replicate_ currently only replicate from the newsource
+		but will work both ways soon.
+
+			db.replicate("http://localhost:5984/test123");
+	*/
 	replicate: function (url, async) {
 		if(this.data) {
 			if(async === undefined) {
 				async = new this.data.async();	
 			}
-			var newstore = {};
-			var idbcheck = /idb\:\/\/(\w*)\/?/;
-			var httpcheck = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/;
-			var idbresults = url.match(idbcheck);
-			if (idbresults !== null) {
-				if (idbresults[1] !== "") {
-					newstore.database = idbresults[1];
-					newstore.dataStore = "SundayDataIDB";
-					async = new enyo.Async();
+			var newstore = {}, from, fromasync, fromasync2;
+			if(typeof url !== "object") {
+				var idbcheck = /idb\:\/\/([\w\-]+)\/?/;
+				var httpcheck = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/;
+				var idbresults = url.match(idbcheck);
+				if (idbresults !== null) {
+					if (idbresults[1] !== "") {
+						newstore.database = idbresults[1];
+						newstore.dataStore = "SundayDataIDB";
+						fromasync = new enyo.Async();
+						fromasync2 = new enyo.Async();
+					}
+				} else {
+					var httpresults = url.match(httpcheck);
+					if (httpresults !== null && httpresults[1] !== "" && httpresults[4] !== "") {
+						newstore.dataStore = "SundayDataHTTP";
+						newstore.host = httpresults[1].replace(httpresults[3],"");
+						newstore.database = httpresults[4];
+						if(httpresults[3] !== undefined) {
+							usernamepassword = httpresults[3];
+							usernamepassword = usernamepassword.replace(/@$/,"").split(":");
+							newstore.username = usernamepassword[0];
+							newstore.password = usernamepassword[1];
+						}
+						//console.log("newstore",newstore);
+						fromasync = new enyo.Ajax();
+						fromasync2 = new enyo.Ajax();
+					}
 				}
+				from = enyo.createFromKind(newstore.dataStore, newstore);
 			} else {
-				var httpresults = url.match(httpcheck);
-				if (httpresults !== null && httpresults[1] !== "" && httpresults[3] !== "") {
-					newstore.dataStore = "SundayDataHTTP";
-					newstore.host = httpresults[1];
-					newstore.database = httpresults[3];
-					async = new enyo.Ajax();
-				}
+				from = url;	
+				fromasync = new from.async();
+				fromasync2 = new from.async();
 			}
-			var from = enyo.createFromKind(newstore.dataStore, newstore);
+			var toasync = new this.data.async();	
+			var toasync2 = new this.data.async();	
 			//console.log("from",from);
-			var parent = this.data;
-			async.response(function (inSender, inResponse) {
+			var parent = this;
+			fromasync2.response(function (inSender, inResponse) {
+				//console.log("inSender froma2", inSender);
+				//console.log("inResponse froma2", inResponse);
+			});
+			toasync2.response(function (inSender, inResponse) {
+				//console.log("inSender toa2", inSender);
+				//console.log("inResponse toa2", inResponse);
+				var docs = [];
+				for(var doc in inResponse.results) {
+					var newdoc = inResponse.results[doc].doc;
+					delete newdoc._localrev;
+					delete newdoc._update_seq;
+					docs.push(newdoc);
+				}
+				from.bulkDocs(docs, fromasync2);
+			});
+			toasync.response(function (inSender, inResponse) {
+				//console.log("inSender toa1", inSender);
+				//console.log("inResponse toa1", inResponse);
+				//console.log("dataStore", parent.dataStore);
+				if(parent.dataStore === "SundayDataIDB") {
+					parent.data.changes({},toasync2);	
+				}
+			});
+			fromasync.response(function (inSender, inResponse) {
 				//console.log("inSender", inSender);
 				//console.log("inResponse", inResponse);
 				//console.log("parent", parent);
 				var docs = [];
+				var update_seq = inResponse.update_seq;
+				//console.log("update_seq", update_seq);
+				if(update_seq !== undefined && parent.dataStore === "SundayDataIDB") {
+					parent.data.put({config: "update_seq", value: update_seq}, undefined, undefined, true);
+				}
 				for (var doc in inResponse.rows) {
 					delete inResponse.rows[doc].doc._localrev;
+					if(update_seq !== undefined) {
+						inResponse.rows[doc].doc._update_seq = update_seq;
+					}
 					docs.push(inResponse.rows[doc].doc);
 				}
-				parent.bulkDocs(docs);
+				if(inResponse.total_rows > 0) {
+					parent.bulkDocs(docs, {update_seq: true}, toasync);
+				} else {
+					toasync.go({});
+				}
 			});
-			from.allDocs({include_docs:true, update_seq:true}, async);
+			from.allDocs({include_docs:true, update_seq:true}, fromasync);
 		} else {
 		}
 	}
 
 });
 
+//* @protected
 enyo.createFromKind = function (inKind, inParam) {
 	var ctor = inKind && enyo.constructorForKind(inKind);
 	if (ctor) {
@@ -355,6 +471,7 @@ enyo.createFromKind = function (inKind, inParam) {
 	}
 };
 
+//* @protected
 var SundayDataReturn = function() {
 	this.resultStack = [];
 	this.value = null;
@@ -469,7 +586,10 @@ var SundayDataReturn = function() {
 		var retparent = this;
 		var fun = function(ret) {
 			if(ret !== undefined) {
-				return retparent.parent.removeDB();
+				retparent.parent.removeDB().done(function(value){
+					retparent.setValue(value);
+				});
+				return null;
 			}
 		};
 		this.resultStack.push(fun);
