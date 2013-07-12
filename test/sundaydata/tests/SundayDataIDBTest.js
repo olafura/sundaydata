@@ -50,7 +50,7 @@ enyo.kind({
 				testSD.setUrl("idb://"+testid+"/");
 				testSD.get("test4_1").done(
 					function(value2) {
-						assertNotEqual("Test that put, get work unchained", value2.somevar, "somedata");	
+						assertNotEqual("Test that removeDB works as promised", value2.somevar, "somedata");	
 				});
 			}
 		);
