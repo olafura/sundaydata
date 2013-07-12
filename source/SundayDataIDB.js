@@ -14,7 +14,6 @@ enyo.kind({
 	],
 	DOC_STORE: 'doc-store',
 	CONFIG_STORE: 'config-store',
-	VIEW_STORE: 'view-store',
 	idb: false,
 	viewfunctions: {},
 	returnarray: {},
@@ -78,13 +77,13 @@ enyo.kind({
 			if (pq[i].type === "builkDocs") {
 				this.bulkDocs(pq[i].docs, pq[i].async);
 			} else if (pq[i].type === "allDocs") {
-				this.allDocs(pq[i].options, pq[i].async);
+				this.allDocs(pq[i].options, pq[i].async, pq[i].config);
 			} else if (pq[i].type === "put") {
-				this.put(pq[i].doc, pq[i].options, pq[i].async);
+				this.put(pq[i].doc, pq[i].options, pq[i].async, pq[i].config);
 			} else if (pq[i].type === "get") {
-				this.get(pq[i].docid, pq[i].async);
+				this.get(pq[i].docid, pq[i].async, pq[i].config);
 			} else if (pq[i].type === "remove") {
-				this.remove(pq[i].docid, pq[i].localrev, pq[i].async);
+				this.remove(pq[i].docid, pq[i].localrev, pq[i].async, pq[i].config);
 			} else if (pq[i].type === "query") {
 				this.remove(pq[i].fun, pq[i].options, pq[i].async);
 			}
@@ -115,6 +114,9 @@ enyo.kind({
 		var configStore = ev.target.result.createObjectStore(this.CONFIG_STORE, {
 				keyPath: 'config'
 			});
+		var objs = ev.currentTarget.transaction.objectStore(this.DOC_STORE);
+		objs.createIndex("changes", "_update_seq", {unique: false});
+		//objectStore.createIndex("changes", "_update_seq", {unique: false});
 	},
 	constructor: function (database) {
 		this.inherited(arguments);
@@ -175,7 +177,7 @@ enyo.kind({
 			async = new enyo.Async();
 			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE);
 			var datastore = txn.objectStore(this.DOC_STORE).get(docu._id);
-			datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu);
+			datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu, {});
 			datastore.onerror = enyo.bind(this, this.handleerror, async);
 		} else {
 			var async = new enyo.Async();
@@ -208,29 +210,42 @@ enyo.kind({
 		this.idb = ev.target.result;
 		var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE);
 		var datastore = txn.objectStore(this.DOC_STORE).get(doc._id);
-		datastore.onsuccess = enyo.bind(this, this.putupdate, async, doc);
+		datastore.onsuccess = enyo.bind(this, this.putupdate, async, doc, {});
 		datastore.onerror = enyo.bind(this, this.handleerror, async);
 	},
-	put: function (doc, options, async) {
+	put: function (doc, options, async, config) {
 		if (async === undefined) {
 			async = new enyo.Async();
 		}
 		if (this.idb) {
-			if (doc._id === undefined) {
-				doc._id = Math.uuid(32, 16).toLowerCase();
-			}
-			var design = doc._id.match(/_design\/(.*)/);
-			if (doc._localrev === undefined) {
-				doc._localrev = "1-" + Math.uuid(32, 16).toLowerCase();
+			var design = null;
+			if(!config) {
+				if (doc._id === undefined) {
+					doc._id = Math.uuid(32, 16).toLowerCase();
+				}
+				if (doc._localrev === undefined) {
+					doc._localrev = "1-" + Math.uuid(32, 16).toLowerCase();
+				}
+				design = doc._id.match(/_design\/(.*)/);
 			}
 			if (design === null) {
 				if (this.viewfunctions.length !== 0) {
-					var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE);
-					var datastore = txn.objectStore(this.DOC_STORE).get(doc._id);
-					datastore.onsuccess = enyo.bind(this, this.putupdate, async, doc);
-					datastore.onerror = enyo.bind(this, this.handleerror, async);
-					for (var view1 in this.viewfunctions) {
-						this.runview(view1, this.viewfunctions[view1], doc);
+					var store = this.DOC_STORE;
+					var txn;
+					if(config) {
+						store = this.CONFIG_STORE;
+						txn = this.idb.transaction(store, IDBTransaction.READ_WRITE);
+						putdoc = txn.objectStore(store).put(doc);
+						putdoc.onsuccess = enyo.bind(this, this.putsuccess, async, "");
+						putdoc.onerror = enyo.bind(this, this.handleerror, async);
+					} else {
+						txn = this.idb.transaction(store, IDBTransaction.READ_WRITE);
+						var datastore = txn.objectStore(store).get(doc._id);
+						datastore.onsuccess = enyo.bind(this, this.putupdate, async, doc, options);
+						datastore.onerror = enyo.bind(this, this.handleerror, async);
+						for (var view1 in this.viewfunctions) {
+							this.runview(view1, this.viewfunctions[view1], doc);
+						}
 					}
 				}
 			} else {
@@ -259,16 +274,19 @@ enyo.kind({
 					type: "put",
 					doc: doc,
 					options: options,
+					config: config,
 					async: async
 				});
 		}
 		return async;
 	},
-	putupdate: function (async, doc, ev) {
+	putupdate: function (async, doc, options, ev) {
 		var olddoc = ev.target.result;
-		var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE);
+		var store = this.DOC_STORE;
+		var txn = this.idb.transaction(store, IDBTransaction.READ_WRITE);
 		var putdoc = {};
-		if (olddoc) {
+		var update_seq = options?options.update_seq:false;
+		if(olddoc) {
 			var olddoc_deleted = olddoc._deleted ? true : false;
 			var oldrev = olddoc._rev !== undefined ? olddoc._rev[0] : 0;
 			var newrev = doc._rev !== undefined ? doc._rev[0] : 0;
@@ -286,7 +304,10 @@ enyo.kind({
 						doc._localrev = revnumber + "-" + Math.uuid(32, 16).toLowerCase();
 					}
 					doc._revhistory = olddoc;
-					putdoc = txn.objectStore(this.DOC_STORE).put(doc);
+					if(!update_seq) {
+						doc._update_seq = 0;
+					}
+					putdoc = txn.objectStore(store).put(doc);
 					putdoc.onsuccess = enyo.bind(this, this.putsuccess, async, doc._localrev);
 					putdoc.onerror = enyo.bind(this, this.handleerror, async);
 				} else {
@@ -308,7 +329,10 @@ enyo.kind({
 				//console.log("putupdate error localrev");
 			}
 		} else {
-			putdoc = txn.objectStore(this.DOC_STORE).put(doc);
+			if(!update_seq) {
+				doc._update_seq = 0;
+			}
+			putdoc = txn.objectStore(store).put(doc);
 			putdoc.onsuccess = enyo.bind(this, this.putsuccess, async, doc._localrev);
 			putdoc.onerror = enyo.bind(this, this.handleerror, async);
 		}
@@ -326,14 +350,14 @@ enyo.kind({
 				return {
 					ok: true,
 					id: id,
-					localrev: localrev
+					rev: localrev
 				};
 			});
 		} else {
 			async.go({
 				ok: true,
 				id: id,
-				localrev: localrev
+				rev: localrev
 			});
 		}
 	},
@@ -341,6 +365,7 @@ enyo.kind({
 		if (bulkasync === undefined) {
 			bulkasync = new enyo.Async();
 		}
+		var putoptions = options.update_seq?{update_seq: true}:{};
 		if (this.idb) {
 			var bulkid = "bulk" + Math.uuid(32, 16).toLowerCase();
 			this.returnarray[bulkid] = [];
@@ -369,7 +394,7 @@ enyo.kind({
 			for (var i = 0; i < length; i++) {
 				var doc = docs[i];
 				if (doc._deleted === undefined) {
-					var putreq = this.put(doc);
+					var putreq = this.put(doc, putoptions);
 					putreq.response(this, putrespfun);
 				} else {
 					var removereq = this.remove(doc._id, doc._localrev);
@@ -400,19 +425,24 @@ enyo.kind({
 		}
 
 	},
-	get: function (docid, async) {
+	get: function (docid, async, config) {
 		if (async === undefined) {
 			async = new enyo.Async();
 		}
 		if (this.idb) {
-			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ);
-			var datastore = txn.objectStore(this.DOC_STORE).get(docid);
+			var store = this.DOC_STORE;
+			if(config) {
+				store = this.CONFIG_STORE;
+			} 
+			var txn = this.idb.transaction(store, IDBTransaction.READ);
+			var datastore = txn.objectStore(store).get(docid);
 			datastore.onsuccess = enyo.bind(this, this.getsuccess, async);
 			datastore.onerror = enyo.bind(this, this.handleerror, async);
 		} else {
 			this.preque.push({
 				type: "get",
 				docid: docid,
+				config: config,
 				async: async
 			});
 		}
@@ -459,7 +489,7 @@ enyo.kind({
 			}
 		}
 	},
-	allDocs: function (options, async) {
+	allDocs: function (options, async, config) {
 		//console.log("caller", arguments.callee.caller);
 		//console.log("options",options);
 		if (async === undefined) {
@@ -468,14 +498,19 @@ enyo.kind({
 		if (this.idb) {
 			var allid = "all" + Math.uuid(32, 16).toLowerCase();
 			this.returnarray[allid] = [];
-			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ);
-			var datastore = txn.objectStore(this.DOC_STORE).openCursor();
+			var store = this.DOC_STORE;
+			if(config) {
+				store = this.CONFIG_STORE;
+			} 
+			var txn = this.idb.transaction(store, IDBTransaction.READ);
+			var datastore = txn.objectStore(store).openCursor();
 			datastore.onsuccess = enyo.bind(this, this.allDocssuccess, async, allid, options);
 			datastore.onerror = enyo.bind(this, this.handleerror, async);
 		} else {
 			this.preque.push({
 				type: "allDocs",
 				options: options,
+				config: config,
 				async: async
 			});
 		}
@@ -508,6 +543,62 @@ enyo.kind({
 				rows: this.returnarray[allid]
 			};
 			delete this.returnarray[allid];
+			if (async.responders.length === 0) {
+				async.response(this, function (inSender, inResponse) {
+					return retarray;
+				});
+			} else {
+				async.go(retarray);
+			}
+		}
+	},
+	changes: function (options, async) {
+		if (async === undefined) {
+			async = new enyo.Async();
+		}
+		if (this.idb) {
+			var changesid = "changes" + Math.uuid(32, 16).toLowerCase();
+			this.returnarray[changesid] = [];
+			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ);
+			var objectstore = txn.objectStore(this.DOC_STORE);
+			var index = objectstore.index("changes").openCursor();
+			index.onsuccess = enyo.bind(this, this.changessuccess, async, changesid);
+			index.onerror = enyo.bind(this, this.handleerror, async);
+		} else {
+			this.preque.push({
+				type: "query",
+				fun: fun,
+				options: options,
+				async: async
+			});
+		}
+		return async;
+
+	},
+	changessuccess: function (async, changesid, ev) {
+		var cursor = ev.target.result;
+		if (cursor) {
+			if (cursor.key !== null && cursor.value._update_seq === 0) {
+				var row = {
+					id: cursor.primaryKey,
+					changes: [{rev: cursor.value._localrev}],
+					doc: cursor.value
+				};
+				delete row.doc._revhistory;
+				var view = /^_view_.*/;
+				for (var field in row.doc) {
+					if (field.match(view) !== null) {
+						delete row.doc[field];
+					}
+				}
+				this.returnarray[changesid].push(row);
+			}
+			cursor["continue"]();
+		} else {
+			var retarray = {
+				results: this.returnarray[changesid]
+			};
+			delete this.returnarray[changesid];
 			if (async.responders.length === 0) {
 				async.response(this, function (inSender, inResponse) {
 					return retarray;
@@ -576,27 +667,36 @@ enyo.kind({
 			}
 		}
 	},
-	remove: function (docid, localrev, async) {
+	remove: function (docid, localrev, async, config) {
 		if (async === undefined) {
 			async = new enyo.Async();
 		}
 		if (this.idb) {
-			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE);
-			var datastore = txn.objectStore(this.DOC_STORE).get(docid);
-			datastore.onsuccess = enyo.bind(this, this.removeget, async, localrev);
+			var store = this.DOC_STORE;
+			if(config) {
+				store = this.CONFIG_STORE;
+			} 
+			var txn = this.idb.transaction(store, IDBTransaction.READ_WRITE);
+			var datastore = txn.objectStore(store).get(docid);
+			datastore.onsuccess = enyo.bind(this, this.removeget, async, localrev, config);
 			datastore.onerror = enyo.bind(this, this.handleerror, async);
 		} else {
 			this.preque.push({
 				type: "remove",
 				docid: docid,
 				localrev: localrev,
+				config: config,
 				async: async
 			});
 		}
 		return async;
 	},
-	removeget: function (async, localrev, ev) {
+	removeget: function (async, localrev, config, ev) {
 		var olddoc = ev.target.result;
+		var store = this.DOC_STORE;
+		if(config) {
+			store = this.CONFIG_STORE;
+		} 
 		if (localrev === olddoc._localrev) {
 			doc = {
 				_deleted: true
@@ -604,8 +704,8 @@ enyo.kind({
 			doc._id = olddoc._id;
 			doc._localrev = olddoc._localrev;
 			doc._revhistory = olddoc;
-			var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE);
-			var removedoc = txn.objectStore(this.DOC_STORE).put(doc);
+			var txn = this.idb.transaction(store, IDBTransaction.READ_WRITE);
+			var removedoc = txn.objectStore(store).put(doc);
 			removedoc.onsuccess = enyo.bind(this, this.removesuccess, async, doc._id, doc._localrev);
 			removedoc.onerror = enyo.bind(this, this.handleerror, async);
 		} else {
@@ -629,36 +729,6 @@ enyo.kind({
 				localrev: localrev
 			});
 		}
-	},
-	getConfig: function (docid, async) {
-		if (async === undefined) {
-			async = new enyo.Async();
-		}
-		if (this.idb) {
-			var txn = this.idb.transaction(this.CONFIG_STORE, IDBTransaction.READ);
-			var datastore = txn.objectStore(this.CONFIG_STORE).get(docid);
-			datastore.onsuccess = enyo.bind(this, this.getconfigsuccess, async);
-			datastore.onerror = enyo.bind(this, this.handleerror, async);
-		} else {
-			this.preque.push({
-				type: "get",
-				docid: docid,
-				async: async
-			});
-		}
-		return async;
-	},
-	getconfigsuccess: function (async, ev) {
-		var doc = ev.target.result;
-		if (doc !== undefined) {
-			if (async.responders.length === 0) {
-				async.response(function (inSender, inResponse) {
-					return doc;
-				});
-			} else {
-				async.go(doc);
-			}
-		} else {}
 	}
 
 });
