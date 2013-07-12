@@ -1,5 +1,6 @@
 enyo.depends(
 	"../lib/uuid.js",
+	"../lib/sha1.js",
         "fixidb.js",
 	"DataLayout.js",
 	"SundayDataIDB.js",
