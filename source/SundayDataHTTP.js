@@ -103,6 +103,7 @@ enyo.kind({
 		}
 		ajax.url = this.host + "/" + this.database + "/";
 		ajax.cacheBust = false;
+		ajax.method = "DELETE";
 		if(this.username !== "" && this.password !== "") {
 			ajax.headers = {"Authorization": this.authHeader()};
 		}
