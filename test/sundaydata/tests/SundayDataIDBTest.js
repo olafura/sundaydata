@@ -51,6 +51,7 @@ enyo.kind({
 				testSD.get("test4_1").done(
 					function(value2) {
 						assertNotEqual("Test that removeDB works as promised", value2.somevar, "somedata");	
+						testSD.removeDB();
 				});
 			}
 		);
