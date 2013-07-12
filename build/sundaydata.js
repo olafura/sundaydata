@@ -1334,6 +1334,106 @@ return I.toLowerCase();
 };
 })();
 
+// ../lib/sha1.js
+
+function hex_sha1(e) {
+return binb2hex(core_sha1(str2binb(e), e.length * chrsz));
+}
+
+function b64_sha1(e) {
+return binb2b64(core_sha1(str2binb(e), e.length * chrsz));
+}
+
+function str_sha1(e) {
+return binb2str(core_sha1(str2binb(e), e.length * chrsz));
+}
+
+function hex_hmac_sha1(e, t) {
+return binb2hex(core_hmac_sha1(e, t));
+}
+
+function b64_hmac_sha1(e, t) {
+return binb2b64(core_hmac_sha1(e, t));
+}
+
+function str_hmac_sha1(e, t) {
+return binb2str(core_hmac_sha1(e, t));
+}
+
+function sha1_vm_test() {
+return hex_sha1("abc") == "a9993e364706816aba3e25717850c26c9cd0d89d";
+}
+
+function core_sha1(e, t) {
+e[t >> 5] |= 128 << 24 - t % 32, e[(t + 64 >> 9 << 4) + 15] = t;
+var n = Array(80), r = 1732584193, i = -271733879, s = -1732584194, o = 271733878, u = -1009589776;
+for (var a = 0; a < e.length; a += 16) {
+var f = r, l = i, c = s, h = o, p = u;
+for (var d = 0; d < 80; d++) {
+d < 16 ? n[d] = e[a + d] : n[d] = rol(n[d - 3] ^ n[d - 8] ^ n[d - 14] ^ n[d - 16], 1);
+var v = safe_add(safe_add(rol(r, 5), sha1_ft(d, i, s, o)), safe_add(safe_add(u, n[d]), sha1_kt(d)));
+u = o, o = s, s = rol(i, 30), i = r, r = v;
+}
+r = safe_add(r, f), i = safe_add(i, l), s = safe_add(s, c), o = safe_add(o, h), u = safe_add(u, p);
+}
+return Array(r, i, s, o, u);
+}
+
+function sha1_ft(e, t, n, r) {
+return e < 20 ? t & n | ~t & r : e < 40 ? t ^ n ^ r : e < 60 ? t & n | t & r | n & r : t ^ n ^ r;
+}
+
+function sha1_kt(e) {
+return e < 20 ? 1518500249 : e < 40 ? 1859775393 : e < 60 ? -1894007588 : -899497514;
+}
+
+function core_hmac_sha1(e, t) {
+var n = str2binb(e);
+n.length > 16 && (n = core_sha1(n, e.length * chrsz));
+var r = Array(16), i = Array(16);
+for (var s = 0; s < 16; s++) r[s] = n[s] ^ 909522486, i[s] = n[s] ^ 1549556828;
+var o = core_sha1(r.concat(str2binb(t)), 512 + t.length * chrsz);
+return core_sha1(i.concat(o), 672);
+}
+
+function safe_add(e, t) {
+var n = (e & 65535) + (t & 65535), r = (e >> 16) + (t >> 16) + (n >> 16);
+return r << 16 | n & 65535;
+}
+
+function rol(e, t) {
+return e << t | e >>> 32 - t;
+}
+
+function str2binb(e) {
+var t = Array(), n = (1 << chrsz) - 1;
+for (var r = 0; r < e.length * chrsz; r += chrsz) t[r >> 5] |= (e.charCodeAt(r / chrsz) & n) << 32 - chrsz - r % 32;
+return t;
+}
+
+function binb2str(e) {
+var t = "", n = (1 << chrsz) - 1;
+for (var r = 0; r < e.length * 32; r += chrsz) t += String.fromCharCode(e[r >> 5] >>> 32 - chrsz - r % 32 & n);
+return t;
+}
+
+function binb2hex(e) {
+var t = hexcase ? "0123456789ABCDEF" : "0123456789abcdef", n = "";
+for (var r = 0; r < e.length * 4; r++) n += t.charAt(e[r >> 2] >> (3 - r % 4) * 8 + 4 & 15) + t.charAt(e[r >> 2] >> (3 - r % 4) * 8 & 15);
+return n;
+}
+
+function binb2b64(e) {
+var t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", n = "";
+for (var r = 0; r < e.length * 4; r += 3) {
+var i = (e[r >> 2] >> 8 * (3 - r % 4) & 255) << 16 | (e[r + 1 >> 2] >> 8 * (3 - (r + 1) % 4) & 255) << 8 | e[r + 2 >> 2] >> 8 * (3 - (r + 2) % 4) & 255;
+for (var s = 0; s < 4; s++) r * 8 + s * 6 > e.length * 32 ? n += b64pad : n += t.charAt(i >> 6 * (3 - s) & 63);
+}
+return n;
+}
+
+var hexcase = 0, b64pad = "=", chrsz = 8;
+
 // fixidb.js
 
 window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB, window.IDBCursor = window.IDBCursor || window.webkitIDBCursor, window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange, window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction, IDBTransaction = IDBTransaction || {}, IDBTransaction.READ_WRITE = IDBTransaction.READ_WRITE || "readwrite", IDBTransaction.READ = IDBTransaction.READ || "readonly", IDBCursor = IDBCursor || {}, IDBCursor.NEXT = IDBCursor.NEXT || "next", IDBCursor.PREV = IDBCursor.PREV || "prev";
@@ -1368,7 +1468,6 @@ onCommit: "commit"
 } ],
 DOC_STORE: "doc-store",
 CONFIG_STORE: "config-store",
-VIEW_STORE: "view-store",
 idb: !1,
 viewfunctions: {},
 returnarray: {},
@@ -1414,7 +1513,7 @@ t["continue"]();
 unrollpreque: function() {
 pq = this.preque;
 var e = pq.length;
-for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(pq[t].options, pq[t].async) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async) : pq[t].type === "query" && this.remove(pq[t].fun, pq[t].options, pq[t].async);
+for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async, pq[t].config) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async, pq[t].config) : pq[t].type === "query" && this.remove(pq[t].fun, pq[t].options, pq[t].async);
 this.preque = [];
 },
 versioncomplete: function(e) {
@@ -1434,6 +1533,9 @@ var t = e.target.result.createObjectStore(this.DOC_STORE, {
 keyPath: "_id"
 }), n = e.target.result.createObjectStore(this.CONFIG_STORE, {
 keyPath: "config"
+}), r = e.currentTarget.transaction.objectStore(this.DOC_STORE);
+r.createIndex("changes", "_update_seq", {
+unique: !1
 });
 },
 constructor: function(e) {
@@ -1462,7 +1564,7 @@ docu["_view_" + view] = e, docu["_view_" + view + "_value"] = t;
 };
 eval("var fun = " + funstring), fun(docu), "_view_" + view in docu || (docu["_view_" + view] = null, docu["_view_" + view + "_value"] = null), async = new enyo.Async;
 var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), datastore = txn.objectStore(this.DOC_STORE).get(docu._id);
-datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu), datastore.onerror = enyo.bind(this, this.handleerror, async);
+datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu, {}), datastore.onerror = enyo.bind(this, this.handleerror, async);
 } else {
 var async = new enyo.Async, parent = this;
 async.response(function(e, t) {
@@ -1482,46 +1584,50 @@ unique: !1
 putview: function(e, t, n) {
 this.idb = n.target.result;
 var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), i = r.objectStore(this.DOC_STORE).get(e._id);
-i.onsuccess = enyo.bind(this, this.putupdate, t, e), i.onerror = enyo.bind(this, this.handleerror, t);
+i.onsuccess = enyo.bind(this, this.putupdate, t, e, {}), i.onerror = enyo.bind(this, this.handleerror, t);
 },
-put: function(e, t, n) {
+put: function(e, t, n, r) {
 n === undefined && (n = new enyo.Async);
 if (this.idb) {
-e._id === undefined && (e._id = Math.uuid(32, 16).toLowerCase());
-var r = e._id.match(/_design\/(.*)/);
-e._localrev === undefined && (e._localrev = "1-" + Math.uuid(32, 16).toLowerCase());
-if (r === null) {
+var i = null;
+r || (e._id === undefined && (e._id = Math.uuid(32, 16).toLowerCase()), e._localrev === undefined && (e._localrev = "1-" + Math.uuid(32, 16).toLowerCase()), i = e._id.match(/_design\/(.*)/));
+if (i === null) {
 if (this.viewfunctions.length !== 0) {
-var i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), s = i.objectStore(this.DOC_STORE).get(e._id);
-s.onsuccess = enyo.bind(this, this.putupdate, n, e), s.onerror = enyo.bind(this, this.handleerror, n);
-for (var o in this.viewfunctions) this.runview(o, this.viewfunctions[o], e);
+var s = this.DOC_STORE, o;
+if (r) s = this.CONFIG_STORE, o = this.idb.transaction(s, IDBTransaction.READ_WRITE), putdoc = o.objectStore(s).put(e), putdoc.onsuccess = enyo.bind(this, this.putsuccess, n, ""), putdoc.onerror = enyo.bind(this, this.handleerror, n); else {
+o = this.idb.transaction(s, IDBTransaction.READ_WRITE);
+var u = o.objectStore(s).get(e._id);
+u.onsuccess = enyo.bind(this, this.putupdate, n, e, t), u.onerror = enyo.bind(this, this.handleerror, n);
+for (var a in this.viewfunctions) this.runview(a, this.viewfunctions[a], e);
+}
 }
 } else if (e.views !== undefined) {
-var u = e._id.match(/^_design\/(.*)/), a = [];
-for (var f in e.views) this.viewfunctions[u[1] + "_" + f] = e.views[f].map, a.push(u[1] + "/" + f), this.runview(u[1] + "/" + f, e.views[f].map);
-var l = this.idb.version;
+var f = e._id.match(/^_design\/(.*)/), l = [];
+for (var c in e.views) this.viewfunctions[f[1] + "_" + c] = e.views[c].map, l.push(f[1] + "/" + c), this.runview(f[1] + "/" + c, e.views[c].map);
+var h = this.idb.version;
 this.idb.close(), this.idb = !1;
-var c = indexedDB.open(this.database, l + 1);
-c.onsuccess = enyo.bind(this, this.putview, e, n), c.onerror = enyo.bind(this, this.handleerror, this.dbcallback), c.onupgradeneeded = enyo.bind(this, this.upgradeneededview, a), c.onblocked = function(e) {};
+var p = indexedDB.open(this.database, h + 1);
+p.onsuccess = enyo.bind(this, this.putview, e, n), p.onerror = enyo.bind(this, this.handleerror, this.dbcallback), p.onupgradeneeded = enyo.bind(this, this.upgradeneededview, l), p.onblocked = function(e) {};
 }
 } else this.preque.push({
 type: "put",
 doc: e,
 options: t,
+config: r,
 async: n
 });
 return n;
 },
-putupdate: function(e, t, n) {
-var r = n.target.result, i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), s = {};
-if (r) {
-var o = r._deleted ? !0 : !1, u = r._rev !== undefined ? r._rev[0] : 0, a = t._rev !== undefined ? t._rev[0] : 0, f = a > u;
-if (f || r._localrev !== undefined || o) if (f || o || r._localrev === t._localrev || parseInt(t._localrev[0], 10) > parseInt(r._localrev[0], 10)) {
-if (!o) {
-var l;
-f ? l = parseInt(r._localrev[0], 10) + 1 : l = parseInt(t._localrev[0], 10) + 1, t._localrev = l + "-" + Math.uuid(32, 16).toLowerCase();
+putupdate: function(e, t, n, r) {
+var i = r.target.result, s = this.DOC_STORE, o = this.idb.transaction(s, IDBTransaction.READ_WRITE), u = {}, a = n ? n.update_seq : !1;
+if (i) {
+var f = i._deleted ? !0 : !1, l = i._rev !== undefined ? i._rev[0] : 0, c = t._rev !== undefined ? t._rev[0] : 0, h = c > l;
+if (h || i._localrev !== undefined || f) if (h || f || i._localrev === t._localrev || parseInt(t._localrev[0], 10) > parseInt(i._localrev[0], 10)) {
+if (!f) {
+var p;
+h ? p = parseInt(i._localrev[0], 10) + 1 : p = parseInt(t._localrev[0], 10) + 1, t._localrev = p + "-" + Math.uuid(32, 16).toLowerCase();
 }
-t._revhistory = r, s = i.objectStore(this.DOC_STORE).put(t), s.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), s.onerror = enyo.bind(this, this.handleerror, e);
+t._revhistory = i, a || (t._update_seq = 0), u = o.objectStore(s).put(t), u.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
 } else e.responders.length === 0 ? e.response(function(e, t) {
 return {
 error: "conflict",
@@ -1531,7 +1637,7 @@ reason: "Document update conflict."
 error: "conflict",
 reason: "Document update conflict."
 });
-} else s = i.objectStore(this.DOC_STORE).put(t), s.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), s.onerror = enyo.bind(this, this.handleerror, e);
+} else a || (t._update_seq = 0), u = o.objectStore(s).put(t), u.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
 },
 putsuccess: function(e, t, n) {
 var r = n.target.result;
@@ -1544,40 +1650,43 @@ database: this.databaseName
 return {
 ok: !0,
 id: r,
-localrev: t
+rev: t
 };
 }) : e.go({
 ok: !0,
 id: r,
-localrev: t
+rev: t
 });
 },
 bulkDocs: function(e, t, n) {
 n === undefined && (n = new enyo.Async);
+var r = t.update_seq ? {
+update_seq: !0
+} : {};
 if (this.idb) {
-var r = "bulk" + Math.uuid(32, 16).toLowerCase();
-this.returnarray[r] = [];
-var i = e.length;
+var i = "bulk" + Math.uuid(32, 16).toLowerCase();
+this.returnarray[i] = [];
+var s = e.length;
 putrespfun = function(e, t) {
-t.ok === !0 ? this.bulkDocsresults(n, i, r, {
+t.ok === !0 ? this.bulkDocsresults(n, s, i, {
 id: t.id,
 localrev: t.localrev
-}) : this.bulkDocsresults(n, i, r, t);
+}) : this.bulkDocsresults(n, s, i, t);
 }, removerespfun = function(e, t) {
-t.ok === !0 ? this.bulkDocsresults(n, i, r, {
+t.ok === !0 ? this.bulkDocsresults(n, s, i, {
 id: t.id,
 localrev: t.localrev,
 _deleted: !0
-}) : this.bulkDocsresults(n, i, r, t);
+}) : this.bulkDocsresults(n, s, i, t);
 };
-for (var s = 0; s < i; s++) {
-var o = e[s];
-if (o._deleted === undefined) {
-var u = this.put(o);
-u.response(this, putrespfun);
+for (var o = 0; o < s; o++) {
+var u = e[o];
+if (u._deleted === undefined) {
+var a = this.put(u, r);
+a.response(this, putrespfun);
 } else {
-var a = this.remove(o._id, o._localrev);
-a.response(this, removerespfun);
+var f = this.remove(u._id, u._localrev);
+f.response(this, removerespfun);
 }
 }
 } else this.preque.push({
@@ -1596,14 +1705,17 @@ return i;
 }) : e.go(i);
 }
 },
-get: function(e, t) {
+get: function(e, t, n) {
 t === undefined && (t = new enyo.Async);
 if (this.idb) {
-var n = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), r = n.objectStore(this.DOC_STORE).get(e);
-r.onsuccess = enyo.bind(this, this.getsuccess, t), r.onerror = enyo.bind(this, this.handleerror, t);
+var r = this.DOC_STORE;
+n && (r = this.CONFIG_STORE);
+var i = this.idb.transaction(r, IDBTransaction.READ), s = i.objectStore(r).get(e);
+s.onsuccess = enyo.bind(this, this.getsuccess, t), s.onerror = enyo.bind(this, this.handleerror, t);
 } else this.preque.push({
 type: "get",
 docid: e,
+config: n,
 async: t
 });
 return t;
@@ -1635,22 +1747,25 @@ error: "Not Found"
 error: "Not Found"
 });
 },
-allDocs: function(e, t) {
+allDocs: function(e, t, n) {
 t === undefined && (t = new enyo.Async);
 if (this.idb) {
-var n = "all" + Math.uuid(32, 16).toLowerCase();
-this.returnarray[n] = [];
-var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), i = r.objectStore(this.DOC_STORE).openCursor();
-i.onsuccess = enyo.bind(this, this.allDocssuccess, t, n, e), i.onerror = enyo.bind(this, this.handleerror, t);
+var r = "all" + Math.uuid(32, 16).toLowerCase();
+this.returnarray[r] = [];
+var i = this.DOC_STORE;
+n && (i = this.CONFIG_STORE);
+var s = this.idb.transaction(i, IDBTransaction.READ), o = s.objectStore(i).openCursor();
+o.onsuccess = enyo.bind(this, this.allDocssuccess, t, r, e), o.onerror = enyo.bind(this, this.handleerror, t);
 } else this.preque.push({
 type: "allDocs",
 options: e,
+config: n,
 async: t
 });
 return t;
 },
 allDocssuccess: function(e, t, n, r) {
-var i = event.target.result;
+var i = r.target.result;
 if (i) {
 var s = {
 key: i.key,
@@ -1677,6 +1792,47 @@ return a;
 }) : e.go(a);
 }
 },
+changes: function(e, t) {
+t === undefined && (t = new enyo.Async);
+if (this.idb) {
+var n = "changes" + Math.uuid(32, 16).toLowerCase();
+this.returnarray[n] = [];
+var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), i = r.objectStore(this.DOC_STORE), s = i.index("changes").openCursor();
+s.onsuccess = enyo.bind(this, this.changessuccess, t, n), s.onerror = enyo.bind(this, this.handleerror, t);
+} else this.preque.push({
+type: "query",
+fun: fun,
+options: e,
+async: t
+});
+return t;
+},
+changessuccess: function(e, t, n) {
+var r = n.target.result;
+if (r) {
+if (r.key !== null && r.value._update_seq === 0) {
+var i = {
+id: r.primaryKey,
+changes: [ {
+rev: r.value._localrev
+} ],
+doc: r.value
+};
+delete i.doc._revhistory;
+var s = /^_view_.*/;
+for (var o in i.doc) o.match(s) !== null && delete i.doc[o];
+this.returnarray[t].push(i);
+}
+r["continue"]();
+} else {
+var u = {
+results: this.returnarray[t]
+};
+delete this.returnarray[t], e.responders.length === 0 ? e.response(this, function(e, t) {
+return u;
+}) : e.go(u);
+}
+},
 query: function(e, t, n) {
 n === undefined && (n = new enyo.Async);
 if (this.idb) {
@@ -1693,7 +1849,7 @@ async: n
 return n;
 },
 querysuccess: function(e, t, n, r) {
-var i = event.target.result;
+var i = r.target.result;
 if (i) {
 if (i.key !== null || i.value["_view_" + n.replace("/", "_") + "_value"] !== null) {
 var s = {
@@ -1719,27 +1875,31 @@ return a;
 }) : e.go(a);
 }
 },
-remove: function(e, t, n) {
+remove: function(e, t, n, r) {
 n === undefined && (n = new enyo.Async);
 if (this.idb) {
-var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), i = r.objectStore(this.DOC_STORE).get(e);
-i.onsuccess = enyo.bind(this, this.removeget, n, t), i.onerror = enyo.bind(this, this.handleerror, n);
+var i = this.DOC_STORE;
+r && (i = this.CONFIG_STORE);
+var s = this.idb.transaction(i, IDBTransaction.READ_WRITE), o = s.objectStore(i).get(e);
+o.onsuccess = enyo.bind(this, this.removeget, n, t, r), o.onerror = enyo.bind(this, this.handleerror, n);
 } else this.preque.push({
 type: "remove",
 docid: e,
 localrev: t,
+config: r,
 async: n
 });
 return n;
 },
-removeget: function(e, t, n) {
-var r = n.target.result;
-if (t === r._localrev) {
+removeget: function(e, t, n, r) {
+var i = r.target.result, s = this.DOC_STORE;
+n && (s = this.CONFIG_STORE);
+if (t === i._localrev) {
 doc = {
 _deleted: !0
-}, doc._id = r._id, doc._localrev = r._localrev, doc._revhistory = r;
-var i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), s = i.objectStore(this.DOC_STORE).put(doc);
-s.onsuccess = enyo.bind(this, this.removesuccess, e, doc._id, doc._localrev), s.onerror = enyo.bind(this, this.handleerror, e);
+}, doc._id = i._id, doc._localrev = i._localrev, doc._revhistory = i;
+var o = this.idb.transaction(s, IDBTransaction.READ_WRITE), u = o.objectStore(s).put(doc);
+u.onsuccess = enyo.bind(this, this.removesuccess, e, doc._id, doc._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
 }
 },
 removesuccess: function(e, t, n, r) {
@@ -1754,24 +1914,6 @@ ok: !0,
 id: t,
 localrev: n
 });
-},
-getConfig: function(e, t) {
-t === undefined && (t = new enyo.Async);
-if (this.idb) {
-var n = this.idb.transaction(this.CONFIG_STORE, IDBTransaction.READ), r = n.objectStore(this.CONFIG_STORE).get(e);
-r.onsuccess = enyo.bind(this, this.getconfigsuccess, t), r.onerror = enyo.bind(this, this.handleerror, t);
-} else this.preque.push({
-type: "get",
-docid: e,
-async: t
-});
-return t;
-},
-getconfigsuccess: function(e, t) {
-var n = t.target.result;
-n !== undefined && (e.responders.length === 0 ? e.response(function(e, t) {
-return n;
-}) : e.go(n));
 }
 });
 
@@ -1833,7 +1975,7 @@ Authorization: this.authHeader()
 }), this.dbcallback.go();
 },
 removeDB: function(e) {
-return e === undefined && (e = new enyo.Ajax), e.url = this.host + "/" + this.database + "/", e.cacheBust = !1, this.username !== "" && this.password !== "" && (e.headers = {
+return e === undefined && (e = new enyo.Ajax), e.url = this.host + "/" + this.database + "/", e.cacheBust = !1, e.method = "DELETE", this.username !== "" && this.password !== "" && (e.headers = {
 Authorization: this.authHeader()
 }), e.go(), e;
 },
@@ -1899,12 +2041,12 @@ constructor: function(e) {
 this.inherited(arguments), e !== undefined && typeof e == "string" && this.setUrl(e);
 },
 setUrl: function(e) {
-var t = /idb\:\/\/(\w*)\/?/, n = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/;
+var t = /idb\:\/\/([\w\-]+)\/?/, n = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/;
 if (typeof e == "string") {
 var r = e.match(t);
 if (r !== null) r[1] !== "" && (this.setDatabase(r[1]), this.setDataStore("SundayDataIDB")); else {
 var i = e.match(n);
-i !== null && i[1] !== "" && i[2] !== "" && (i[2] !== undefined && (usernamepassword = i[2], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), this.setUsername(usernamepassword[0]), this.setPassword(usernamepassword[1])), this.setHost(i[1]), this.setDatabase(i[3]), this.setDataStore("SundayDataHTTP"));
+i !== null && i[1] !== "" && i[4] !== "" && (i[3] !== undefined && (usernamepassword = i[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), this.setUsername(usernamepassword[0]), this.setPassword(usernamepassword[1])), this.setHost(i[1].replace(i[3], "")), this.setDatabase(i[4]), this.setDataStore("SundayDataHTTP"));
 }
 }
 },
@@ -1922,7 +2064,7 @@ reason: t
 };
 return this.recover(), n;
 }), e.response(function(e, n) {
-t.setValue(n), t.parent.data.destroy();
+t.parent.data.destroy(), t.parent.dataStore = "", t.parent.url = "", t.parent.database = "", t.parent.username = "", t.parent.password = "", t.parent.host = "", t.setValue(n);
 }), this.data.removeDB(e), t;
 }
 },
@@ -2028,20 +2170,39 @@ r.setValue(t);
 replicate: function(e, t) {
 if (this.data) {
 t === undefined && (t = new this.data.async);
-var n = {}, r = /idb\:\/\/(\w*)\/?/, i = /(https?\:\/\/(\w*\:\w*@)?[\w\.]*\:?\d*)\/(\w*)/, s = e.match(r);
-if (s !== null) s[1] !== "" && (n.database = s[1], n.dataStore = "SundayDataIDB", t = new enyo.Async); else {
-var o = e.match(i);
-o !== null && o[1] !== "" && o[3] !== "" && (n.dataStore = "SundayDataHTTP", n.host = o[1], n.database = o[3], t = new enyo.Ajax);
+var n = {}, r, i, s;
+if (typeof e != "object") {
+var o = /idb\:\/\/([\w\-]+)\/?/, u = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/, a = e.match(o);
+if (a !== null) a[1] !== "" && (n.database = a[1], n.dataStore = "SundayDataIDB", i = new enyo.Async, s = new enyo.Async); else {
+var f = e.match(u);
+f !== null && f[1] !== "" && f[4] !== "" && (n.dataStore = "SundayDataHTTP", n.host = f[1].replace(f[3], ""), n.database = f[4], f[3] !== undefined && (usernamepassword = f[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), n.username = usernamepassword[0], n.password = usernamepassword[1]), i = new enyo.Ajax, s = new enyo.Ajax);
 }
-var u = enyo.createFromKind(n.dataStore, n), a = this.data;
-t.response(function(e, t) {
+r = enyo.createFromKind(n.dataStore, n);
+} else r = e, i = new r.async, s = new r.async;
+var l = new this.data.async, c = new this.data.async, h = this;
+s.response(function(e, t) {}), c.response(function(e, t) {
 var n = [];
-for (var r in t.rows) delete t.rows[r].doc._localrev, n.push(t.rows[r].doc);
-a.bulkDocs(n);
-}), u.allDocs({
+for (var i in t.results) {
+var o = t.results[i].doc;
+delete o._localrev, delete o._update_seq, n.push(o);
+}
+r.bulkDocs(n, s);
+}), l.response(function(e, t) {
+h.dataStore === "SundayDataIDB" && h.data.changes({}, c);
+}), i.response(function(e, t) {
+var n = [], r = t.update_seq;
+r !== undefined && h.dataStore === "SundayDataIDB" && h.data.put({
+config: "update_seq",
+value: r
+}, undefined, undefined, !0);
+for (var i in t.rows) delete t.rows[i].doc._localrev, r !== undefined && (t.rows[i].doc._update_seq = r), n.push(t.rows[i].doc);
+t.total_rows > 0 ? h.bulkDocs(n, {
+update_seq: !0
+}, l) : l.go({});
+}), r.allDocs({
 include_docs: !0,
 update_seq: !0
-}, t);
+}, i);
 }
 }
 }), enyo.createFromKind = function(e, t) {
@@ -2068,7 +2229,7 @@ n !== null && (n !== undefined ? this.setValue(n) : this.setValue(this.value));
 }
 }, this.get = function(e, t) {
 var n = this;
-if (this.value !== null && resultStack.length === 0) return e === undefined && (e = this.value.id === undefined ? this.value._id : this.value.id), e !== undefined ? (this.parent.get(this.value, t).done(function(e) {
+if (this.value !== null && this.resultStack.length === 0) return e === undefined && (e = this.value.id === undefined ? this.value._id : this.value.id), e !== undefined ? (this.parent.get(this.value, t).done(function(e) {
 n.setValue(e);
 }), null) : this;
 var r = function(t) {
@@ -2083,7 +2244,7 @@ return null;
 return this.resultStack.push(r), this;
 }, this.put = function(e, t) {
 var n = this;
-if (this.value !== null && resultStack.length === 0) return e === undefined && (this.value = e), id = this.value.id === undefined ? this.value._id : this.value.id, id !== undefined ? (this.parent.put(this.value, t).done(function(e) {
+if (this.value !== null && this.resultStack.length === 0) return e === undefined && (this.value = e), id = this.value.id === undefined ? this.value._id : this.value.id, id !== undefined ? (this.parent.put(this.value, t).done(function(e) {
 n.setValue(e);
 }), null) : this;
 var r = function(r) {
@@ -2099,7 +2260,9 @@ return null;
 return this.resultStack.push(r), this;
 }, this.removeDB = function() {
 var e = this, t = function(t) {
-if (t !== undefined) return e.parent.removeDB();
+if (t !== undefined) return e.parent.removeDB().done(function(t) {
+e.setValue(t);
+}), null;
 };
 return this.resultStack.push(t), this;
 }, this.bulkDocs = function(e, t) {
