@@ -342,7 +342,7 @@ enyo.kind({
 		var results = inEvent.results;
 		var e = results.exception;
 		var info = this.$.group.$[results.name];
-		var content = "<div style='width: 50%;float: left'><b>" + results.assertname + "</b>: " + (results.passed ? "PASSED" : results.message) + "</div><div style='text-align: right; width: 45%; float: right'><b>Execution Time:</b> " + results.runtime + " ms</div>";
+		var content = "<div class='name' style='width: 50%;float: left'><b>" + results.assertname + "</b>: " + (results.passed ? "PASSED" : results.message) + "</div><div class='executiontime' style='text-align: right; width: 45%; float: right'><b>Execution Time:</b> " + results.runtime + " ms</div>";
 		if (e) {
 			// If we have an exception include the stack trace or file/line number.
 			if (e.stack) {
