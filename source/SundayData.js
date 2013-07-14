@@ -95,6 +95,8 @@ enyo.kind({
 	},
 	//* @protected
 	data: null,
+	idbcheck: /idb\:\/\/([\w\-]+)\/?/,
+	httpcheck: /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/,
 	//* @protected
 	constructor: function (url) {
 		this.inherited(arguments);
@@ -104,17 +106,15 @@ enyo.kind({
 	},
 	//* @public
 	setUrl: function (url) {
-		var idbcheck = /idb\:\/\/([\w\-]+)\/?/;
-		var httpcheck = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/;
 		if (typeof url === "string") {
-			var idbresults = url.match(idbcheck);
+			var idbresults = url.match(this.idbcheck);
 			if (idbresults !== null) {
 				if (idbresults[1] !== "") {
 					this.setDatabase(idbresults[1]);
 					this.setDataStore("SundayDataIDB");
 				}
 			} else {
-				var httpresults = url.match(httpcheck);
+				var httpresults = url.match(this.httpcheck);
 				if (httpresults !== null && httpresults[1] !== "" && httpresults[4] !== "") {
 					if(httpresults[3] !== undefined) {
 						usernamepassword = httpresults[3];
@@ -154,10 +154,6 @@ enyo.kind({
 		if(this.data) {
 			if(async === undefined) {
 				async = new this.data.async();
-			}
-			if(this.username !== "") {
-				async.username = this.username;
-				async.password = this.password;
 			}
 			var ret = new SundayDataReturn();
 			ret.parent = this;
@@ -370,20 +366,27 @@ enyo.kind({
 			if(async === undefined) {
 				async = new this.data.async();	
 			}
-			var newstore = {}, from, fromasync, fromasync2;
+			var ret = new SundayDataReturn();
+			ret.parent = this;
+			async.error(function(inSender, inResponse) {
+				var response = {"error": "Unknown", "reason": inResponse};
+				this.recover();
+				return response;
+			});
+			async.response(function (inSender, inResponse) {
+				ret.setValue(inResponse);
+			});
+			var newstore = {}, from;
+			var asyncbridge = new enyo.Async();	
 			if(typeof url !== "object") {
-				var idbcheck = /idb\:\/\/([\w\-]+)\/?/;
-				var httpcheck = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/;
-				var idbresults = url.match(idbcheck);
+				var idbresults = url.match(this.idbcheck);
 				if (idbresults !== null) {
 					if (idbresults[1] !== "") {
 						newstore.database = idbresults[1];
 						newstore.dataStore = "SundayDataIDB";
-						fromasync = new enyo.Async();
-						fromasync2 = new enyo.Async();
 					}
 				} else {
-					var httpresults = url.match(httpcheck);
+					var httpresults = url.match(this.httpcheck);
 					if (httpresults !== null && httpresults[1] !== "" && httpresults[4] !== "") {
 						newstore.dataStore = "SundayDataHTTP";
 						newstore.host = httpresults[1].replace(httpresults[3],"");
@@ -395,68 +398,25 @@ enyo.kind({
 							newstore.password = usernamepassword[1];
 						}
 						//console.log("newstore",newstore);
-						fromasync = new enyo.Ajax();
-						fromasync2 = new enyo.Ajax();
 					}
 				}
 				from = enyo.createFromKind(newstore.dataStore, newstore);
 			} else {
-				from = url;	
-				fromasync = new from.async();
-				fromasync2 = new from.async();
+				from = url.data;	
 			}
-			var toasync = new this.data.async();	
-			var toasync2 = new this.data.async();	
-			//console.log("from",from);
-			var parent = this;
-			fromasync2.response(function (inSender, inResponse) {
-				//console.log("inSender froma2", inSender);
-				//console.log("inResponse froma2", inResponse);
-			});
-			toasync2.response(function (inSender, inResponse) {
-				//console.log("inSender toa2", inSender);
-				//console.log("inResponse toa2", inResponse);
-				var docs = [];
-				for(var doc in inResponse.results) {
-					var newdoc = inResponse.results[doc].doc;
-					delete newdoc._localrev;
-					delete newdoc._update_seq;
-					docs.push(newdoc);
-				}
-				from.bulkDocs(docs, fromasync2);
-			});
-			toasync.response(function (inSender, inResponse) {
-				//console.log("inSender toa1", inSender);
-				//console.log("inResponse toa1", inResponse);
-				//console.log("dataStore", parent.dataStore);
-				if(parent.dataStore === "SundayDataIDB") {
-					parent.data.changes({},toasync2);	
-				}
-			});
-			fromasync.response(function (inSender, inResponse) {
-				//console.log("inSender", inSender);
-				//console.log("inResponse", inResponse);
-				//console.log("parent", parent);
-				var docs = [];
-				var update_seq = inResponse.update_seq;
-				//console.log("update_seq", update_seq);
-				if(update_seq !== undefined && parent.dataStore === "SundayDataIDB") {
-					parent.data.put({config: "update_seq", value: update_seq}, undefined, undefined, true);
-				}
-				for (var doc in inResponse.rows) {
-					delete inResponse.rows[doc].doc._localrev;
-					if(update_seq !== undefined) {
-						inResponse.rows[doc].doc._update_seq = update_seq;
-					}
-					docs.push(inResponse.rows[doc].doc);
-				}
-				if(inResponse.total_rows > 0) {
-					parent.bulkDocs(docs, {update_seq: true}, toasync);
-				} else {
-					toasync.go({});
-				}
-			});
-			from.allDocs({include_docs:true, update_seq:true}, fromasync);
+			var parent = this.data;
+			if(this.dataStore === "SundayDataIDB") {
+				asyncbridge.response(function(inSender, inResponse) {
+					from.replicate(parent, async);
+				});
+				parent.replicate(from, asyncbridge);
+			} else {
+				asyncbridge.response(function(inSender, inResponse) {
+					parent.replicate(from, async);
+				});
+				from.replicate(parent, asyncbridge);
+			}
+			return ret;
 		} else {
 		}
 	}
@@ -487,7 +447,7 @@ var SundayDataReturn = function() {
 		if (this.value === null) {
 			this.resultStack.push(fun);
 		} else {
-			var ret = fun(value);
+			var ret = fun(this.value);
 			if(ret !== undefined) {
 				this.setValue(ret);
 			} else {
@@ -596,7 +556,7 @@ var SundayDataReturn = function() {
 		return this;
 	};
 	this.bulkDocs = function (docs, options) {
-		if(docs !== undefined) {
+		if(docs === undefined) {
 			var retparent = this;
 			var fun = function(ret) {
 				if(ret !== undefined && ret instanceof Array) {
