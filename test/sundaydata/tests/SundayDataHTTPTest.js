@@ -56,5 +56,79 @@ enyo.kind({
 				});
 			}
 		);
-	} 
+	},
+	test5: function() {
+                var testid = "test"+Math.uuid(32, 16).toLowerCase();
+                var testSDidb = new SundayData("idb://"+testid+"/");
+                var testSD = new SundayData("http://testcouch:test123@localhost:5984/"+testid+"/");
+		var assertEqual = enyo.bind(this, this.assertEqual);
+		var testing = testSDidb.put({_id: "test5_1", somevar: "somedata"});
+		testing.replicate("http://testcouch:test123@localhost:5984/"+testid+"/").done(function(value2){
+			testSD.get("test5_1").done(
+				function(value3) {
+					assertEqual("Test if replication works from IDB to HTTP", value3.somevar, "somedata");	
+					testSD.removeDB();
+					testSDidb.removeDB();
+			});
+		});
+	},
+	test6: function() {
+                var testid = "test"+Math.uuid(32, 16).toLowerCase();
+                var testSDidb = new SundayData("idb://"+testid+"/");
+                var testSD = new SundayData("http://testcouch:test123@localhost:5984/"+testid+"/");
+		var assertEqual = enyo.bind(this, this.assertEqual);
+		var testing = testSDidb.put({_id: "test6_1", somevar: "somedata"});
+		testing.replicate(testSD).done(function(value2){
+			testSD.get("test6_1").done(
+				function(value3) {
+					value3.somevar = "newdata";
+					return value3;
+				}
+			).put().done(
+				function(value4) {
+					testSDidb.replicate(testSD).get("test6_1").done(
+						function(value5){
+							assertEqual("Test if replication works, after making changes in HTTP", value5.somevar, "newdata");
+							testSD.removeDB();
+							testSDidb.removeDB();
+						}
+					);
+				}
+			);
+		});
+	},
+	test7: function() {
+                var testid = "test"+Math.uuid(32, 16).toLowerCase();
+                var testSDidb = new SundayData("idb://"+testid+"/");
+                var testSD = new SundayData("http://testcouch:test123@localhost:5984/"+testid+"/");
+		var assertEqual = enyo.bind(this, this.assertEqual);
+		var testing = testSDidb.put({_id: "test7_1", somevar: "somedata"});
+		testing.replicate(testSD).get("test7_1").done(
+			function(value) {
+				value.somevar = "newdata";
+				return value;
+			}
+		).put().replicate(testSD).get("test7_1").done(
+			function(value2){
+				assertEqual("Test if replication works, after making changes in IDB", value2.somevar, "newdata");
+				testSD.removeDB();
+				testSDidb.removeDB();
+			}
+		);
+	},
+	test8: function() {
+                var testid = "test"+Math.uuid(32, 16).toLowerCase();
+                var testSDidb = new SundayData("idb://"+testid+"/");
+                var testSD = new SundayData("http://testcouch:test123@localhost:5984/"+testid+"/");
+		var assertEqual = enyo.bind(this, this.assertEqual);
+		var testing = testSD.put({_id: "test8_1", somevar: "somedata"});
+		testing.replicate(testSDidb).done(function(value2){
+			testSD.get("test8_1").done(
+				function(value3) {
+					assertEqual("Test if replication works from HTTP to IDB", value3.somevar, "somedata");	
+					testSD.removeDB();
+					testSDidb.removeDB();
+			});
+		});
+	}
 });
