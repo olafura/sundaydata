@@ -114,7 +114,7 @@ enyo.kind({
 		var configStore = ev.target.result.createObjectStore(this.CONFIG_STORE, {
 				keyPath: 'config'
 			});
-		var objs = ev.currentTarget.transaction.objectStore(this.DOC_STORE);
+		var objs = ev.target.transaction.objectStore(this.DOC_STORE);
 		objs.createIndex("changes", "_update_seq", {unique: false});
 		//objectStore.createIndex("changes", "_update_seq", {unique: false});
 	},
@@ -374,7 +374,7 @@ enyo.kind({
 				if (inResponse.ok === true) {
 					this.bulkDocsresults(bulkasync, length, bulkid, {
 						id: inResponse.id,
-						localrev: inResponse.localrev
+						rev: inResponse.rev
 					});
 				} else {
 					this.bulkDocsresults(bulkasync, length, bulkid, inResponse);
@@ -384,7 +384,7 @@ enyo.kind({
 				if (inResponse.ok === true) {
 					this.bulkDocsresults(bulkasync, length, bulkid, {
 						id: inResponse.id,
-						localrev: inResponse.localrev,
+						rev: inResponse.rev,
 						_deleted: true
 					});
 				} else {
@@ -729,6 +729,70 @@ enyo.kind({
 				localrev: localrev
 			});
 		}
+	},
+	replicate: function(from, async) {
+		var fromasync = new from.async();
+		var fromusasync = new from.async();
+		var tousasync = new this.async();	
+		var toasync = new this.async();	
+		//console.log("from",from);
+		var parent = this;
+		fromasync.response(function (inSender, inResponse) {
+			//console.log("fromasync");
+			//console.log("inSender", inSender);
+			//console.log("inResponse", inResponse);
+			//console.log("parent", parent);
+			var docs = [];
+			var update_seq = inResponse.update_seq;
+			//console.log("update_seq", update_seq);
+			if(update_seq !== undefined) {
+				parent.put({config: "update_seq", value: update_seq}, undefined, undefined, true);
+			}
+			for (var doc in inResponse.rows) {
+				delete inResponse.rows[doc].doc._localrev;
+				if(update_seq !== undefined) {
+					inResponse.rows[doc].doc._update_seq = update_seq;
+				}
+				docs.push(inResponse.rows[doc].doc);
+			}
+			if(inResponse.total_rows > 0) {
+				parent.bulkDocs(docs, {update_seq: true}, async);
+			} else {
+				async.go({});
+			}
+		});
+		fromusasync.response(function (inSender, inResponse) {
+			//console.log("fromusasync");
+			//console.log("inSender",inSender);
+			//console.log("inResponse",inResponse);
+			var docs = [];
+			var update_seq = inResponse.last_seq;
+			if(update_seq !== undefined) {
+				parent.put({config: "update_seq", value: update_seq}, undefined, undefined, true);
+			}
+			for (var doc in inResponse.results) {
+				delete inResponse.results[doc].doc._localrev;
+				if(update_seq !== undefined) {
+					inResponse.results[doc].doc._update_seq = update_seq;
+				}
+				docs.push(inResponse.results[doc].doc);
+			}
+			if(docs.length > 0) {
+				parent.bulkDocs(docs, {update_seq: true}, async);
+			} else {
+				toasync.go({});
+			}
+		});
+		tousasync.response(function (inSender, inResponse) {
+			//console.log("tousasync");
+			//console.log("inSender",inSender);
+			//console.log("inResponse",inResponse);
+			if(inResponse.value !== undefined) {
+				from.changes(inResponse.value, fromusasync);
+			} else {
+				from.allDocs({include_docs:true, update_seq:true}, fromasync);
+			}
+		});
+		this.get("update_seq",tousasync, true);
 	}
-
 });
