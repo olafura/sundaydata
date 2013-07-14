@@ -136,7 +136,8 @@ enyo.kind({
 		ajax.method = "POST";
 		ajax.contentType = "application/json";
 		ajax.cacheBust = false;
-		ajax.postBody = JSON.stringify({docs:docs});
+		var postdata = enyo.mixin({docs:docs},options);
+		ajax.postBody = JSON.stringify(postdata);
 		if(this.username !== "" && this.password !== "") {
 			ajax.headers = {"Authorization": this.authHeader()};
 		}
@@ -212,7 +213,7 @@ enyo.kind({
 		if (ajax === undefined) {
 			ajax = new enyo.Ajax();
 		}
-		ajax.url = this.host + "/" + this.database + "/_changes?since=" + since;
+		ajax.url = this.host + "/" + this.database + "/_changes?include_docs=true&since=" + since;
 		ajax.method = "GET";
 		ajax.cacheBust = false;
 		if(this.username !== "" && this.password !== "") {
@@ -221,5 +222,51 @@ enyo.kind({
 		ajax.go();
 		return ajax;
 
+	},
+	replicate: function(from, async) {
+		var fromasync = new from.async();
+		var toasync = new this.async();	
+		//console.log("from",from);
+		var parent = this;
+		var newdocs = [];
+		toasync.response(function (inSender, inResponse) {
+			//console.log("fromasync2");
+			//console.log("inSender froma2", inSender);
+			//console.log("inResponse froma2", inResponse);
+			//console.log("newdocs",newdocs);
+			if(newdocs.length > 0) {
+				var docs = [];
+				for(var doc in inResponse) {
+					var newdoc = inResponse[doc];
+					var olddoc = newdocs[doc];
+					if(newdoc.ok) {
+						olddoc._rev = newdoc.rev;	
+					}
+					docs.push(olddoc);
+				}
+				from.bulkDocs(newdocs, {update_seq: true}, async);
+			} else {
+				async.go(inResponse);
+			}
+		});
+		fromasync.response(function (inSender, inResponse) {
+			//console.log("toasync");
+			//console.log("inSender toa", inSender);
+			//console.log("inResponse toa", inResponse);
+			var docs = [];
+			for(var doc in inResponse.results) {
+				var newdoc = inResponse.results[doc].doc;
+				newdocs.push(newdoc);
+				delete newdoc._localrev;
+				delete newdoc._update_seq;
+				docs.push(newdoc);
+			}
+			if(docs.length > 0) {
+				parent.bulkDocs(docs, {}, toasync);
+			} else {
+				async.go({});
+			}
+		});
+		from.changes({},fromasync);	
 	}
 });
