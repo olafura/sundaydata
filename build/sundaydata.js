@@ -955,9 +955,9 @@ document.cookie = r;
 
 enyo.xhr = {
 request: function(e) {
-var t = this.getXMLHttpRequest(e), n = enyo.path.rewrite(this.simplifyFileURL(e.url)), r = e.method || "GET", i = !e.sync;
+var t = this.getXMLHttpRequest(e), n = enyo.path.rewrite(this.simplifyFileURL(e.url)), r = e.method || "GET", i = !e.sync, s = Math.random();
 e.username ? t.open(r, n, i, e.username, e.password) : t.open(r, n, i), enyo.mixin(t, e.xhrFields), e.callback && this.makeReadyStateHandler(t, e.callback), e.headers = e.headers || {}, r !== "GET" && enyo.platform.ios && enyo.platform.ios >= 6 && e.headers["cache-control"] !== null && (e.headers["cache-control"] = e.headers["cache-control"] || "no-cache");
-if (t.setRequestHeader) for (var s in e.headers) e.headers[s] && t.setRequestHeader(s, e.headers[s]);
+if (t.setRequestHeader) for (var o in e.headers) e.headers[o] && t.setRequestHeader(o, e.headers[o]);
 return typeof t.overrideMimeType == "function" && e.mimeType && t.overrideMimeType(e.mimeType), t.send(e.body || null), !i && e.callback && t.onreadystatechange(t), t;
 },
 cancel: function(e) {
@@ -1533,7 +1533,7 @@ var t = e.target.result.createObjectStore(this.DOC_STORE, {
 keyPath: "_id"
 }), n = e.target.result.createObjectStore(this.CONFIG_STORE, {
 keyPath: "config"
-}), r = e.currentTarget.transaction.objectStore(this.DOC_STORE);
+}), r = e.target.transaction.objectStore(this.DOC_STORE);
 r.createIndex("changes", "_update_seq", {
 unique: !1
 });
@@ -1670,12 +1670,12 @@ var s = e.length;
 putrespfun = function(e, t) {
 t.ok === !0 ? this.bulkDocsresults(n, s, i, {
 id: t.id,
-localrev: t.localrev
+rev: t.rev
 }) : this.bulkDocsresults(n, s, i, t);
 }, removerespfun = function(e, t) {
 t.ok === !0 ? this.bulkDocsresults(n, s, i, {
 id: t.id,
-localrev: t.localrev,
+rev: t.rev,
 _deleted: !0
 }) : this.bulkDocsresults(n, s, i, t);
 };
@@ -1914,6 +1914,35 @@ ok: !0,
 id: t,
 localrev: n
 });
+},
+replicate: function(e, t) {
+var n = new e.async, r = new e.async, i = new this.async, s = new this.async, o = this;
+n.response(function(e, n) {
+var r = [], i = n.update_seq;
+i !== undefined && o.put({
+config: "update_seq",
+value: i
+}, undefined, undefined, !0);
+for (var s in n.rows) delete n.rows[s].doc._localrev, i !== undefined && (n.rows[s].doc._update_seq = i), r.push(n.rows[s].doc);
+n.total_rows > 0 ? o.bulkDocs(r, {
+update_seq: !0
+}, t) : t.go({});
+}), r.response(function(e, n) {
+var r = [], i = n.last_seq;
+i !== undefined && o.put({
+config: "update_seq",
+value: i
+}, undefined, undefined, !0);
+for (var u in n.results) delete n.results[u].doc._localrev, i !== undefined && (n.results[u].doc._update_seq = i), r.push(n.results[u].doc);
+r.length > 0 ? o.bulkDocs(r, {
+update_seq: !0
+}, t) : s.go({});
+}), i.response(function(t, i) {
+i.value !== undefined ? e.changes(i.value, r) : e.allDocs({
+include_docs: !0,
+update_seq: !0
+}, n);
+}), this.get("update_seq", i, !0);
 }
 });
 
@@ -1985,9 +2014,11 @@ Authorization: this.authHeader()
 }), n.go(), n;
 },
 bulkDocs: function(e, t, n) {
-return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_bulk_docs", n.method = "POST", n.contentType = "application/json", n.cacheBust = !1, n.postBody = JSON.stringify({
+n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_bulk_docs", n.method = "POST", n.contentType = "application/json", n.cacheBust = !1;
+var r = enyo.mixin({
 docs: e
-}), this.username !== "" && this.password !== "" && (n.headers = {
+}, t);
+return n.postBody = JSON.stringify(r), this.username !== "" && this.password !== "" && (n.headers = {
 Authorization: this.authHeader()
 }), n.go(), n;
 },
@@ -2017,9 +2048,31 @@ Authorization: this.authHeader()
 }), n.go(), n;
 },
 changes: function(e, t) {
-return e === undefined && (e = 0), t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_changes?since=" + e, t.method = "GET", t.cacheBust = !1, this.username !== "" && this.password !== "" && (t.headers = {
+return e === undefined && (e = 0), t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_changes?include_docs=true&since=" + e, t.method = "GET", t.cacheBust = !1, this.username !== "" && this.password !== "" && (t.headers = {
 Authorization: this.authHeader()
 }), t.go(), t;
+},
+replicate: function(e, t) {
+var n = new e.async, r = new this.async, i = this, s = [];
+r.response(function(n, r) {
+if (s.length > 0) {
+var i = [];
+for (var o in r) {
+var u = r[o], a = s[o];
+u.ok && (a._rev = u.rev), i.push(a);
+}
+e.bulkDocs(s, {
+update_seq: !0
+}, t);
+} else t.go(r);
+}), n.response(function(e, n) {
+var o = [];
+for (var u in n.results) {
+var a = n.results[u].doc;
+s.push(a), delete a._localrev, delete a._update_seq, o.push(a);
+}
+o.length > 0 ? i.bulkDocs(o, {}, r) : t.go({});
+}), e.changes({}, n);
 }
 });
 
@@ -2037,16 +2090,17 @@ password: "",
 host: ""
 },
 data: null,
+idbcheck: /idb\:\/\/([\w\-]+)\/?/,
+httpcheck: /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/,
 constructor: function(e) {
 this.inherited(arguments), e !== undefined && typeof e == "string" && this.setUrl(e);
 },
 setUrl: function(e) {
-var t = /idb\:\/\/([\w\-]+)\/?/, n = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/;
 if (typeof e == "string") {
-var r = e.match(t);
-if (r !== null) r[1] !== "" && (this.setDatabase(r[1]), this.setDataStore("SundayDataIDB")); else {
-var i = e.match(n);
-i !== null && i[1] !== "" && i[4] !== "" && (i[3] !== undefined && (usernamepassword = i[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), this.setUsername(usernamepassword[0]), this.setPassword(usernamepassword[1])), this.setHost(i[1].replace(i[3], "")), this.setDatabase(i[4]), this.setDataStore("SundayDataHTTP"));
+var t = e.match(this.idbcheck);
+if (t !== null) t[1] !== "" && (this.setDatabase(t[1]), this.setDataStore("SundayDataIDB")); else {
+var n = e.match(this.httpcheck);
+n !== null && n[1] !== "" && n[4] !== "" && (n[3] !== undefined && (usernamepassword = n[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), this.setUsername(usernamepassword[0]), this.setPassword(usernamepassword[1])), this.setHost(n[1].replace(n[3], "")), this.setDatabase(n[4]), this.setDataStore("SundayDataHTTP"));
 }
 }
 },
@@ -2055,7 +2109,7 @@ this.data && this.data.destroy(), this.host !== "" ? this.data = enyo.createFrom
 },
 removeDB: function(e) {
 if (this.data) {
-e === undefined && (e = new this.data.async), this.username !== "" && (e.username = this.username, e.password = this.password);
+e === undefined && (e = new this.data.async);
 var t = new SundayDataReturn;
 return t.parent = this, e.error(function(e, t) {
 var n = {
@@ -2170,39 +2224,31 @@ r.setValue(t);
 replicate: function(e, t) {
 if (this.data) {
 t === undefined && (t = new this.data.async);
-var n = {}, r, i, s;
+var n = new SundayDataReturn;
+n.parent = this, t.error(function(e, t) {
+var n = {
+error: "Unknown",
+reason: t
+};
+return this.recover(), n;
+}), t.response(function(e, t) {
+n.setValue(t);
+});
+var r = {}, i, s = new enyo.Async;
 if (typeof e != "object") {
-var o = /idb\:\/\/([\w\-]+)\/?/, u = /((https?\:\/\/)?(\w*\:\w*@)?[\w\.]*\:?\d*)\/([\w\-]+)/, a = e.match(o);
-if (a !== null) a[1] !== "" && (n.database = a[1], n.dataStore = "SundayDataIDB", i = new enyo.Async, s = new enyo.Async); else {
-var f = e.match(u);
-f !== null && f[1] !== "" && f[4] !== "" && (n.dataStore = "SundayDataHTTP", n.host = f[1].replace(f[3], ""), n.database = f[4], f[3] !== undefined && (usernamepassword = f[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), n.username = usernamepassword[0], n.password = usernamepassword[1]), i = new enyo.Ajax, s = new enyo.Ajax);
+var o = e.match(this.idbcheck);
+if (o !== null) o[1] !== "" && (r.database = o[1], r.dataStore = "SundayDataIDB"); else {
+var u = e.match(this.httpcheck);
+u !== null && u[1] !== "" && u[4] !== "" && (r.dataStore = "SundayDataHTTP", r.host = u[1].replace(u[3], ""), r.database = u[4], u[3] !== undefined && (usernamepassword = u[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), r.username = usernamepassword[0], r.password = usernamepassword[1]));
 }
-r = enyo.createFromKind(n.dataStore, n);
-} else r = e, i = new r.async, s = new r.async;
-var l = new this.data.async, c = new this.data.async, h = this;
-s.response(function(e, t) {}), c.response(function(e, t) {
-var n = [];
-for (var i in t.results) {
-var o = t.results[i].doc;
-delete o._localrev, delete o._update_seq, n.push(o);
-}
-r.bulkDocs(n, s);
-}), l.response(function(e, t) {
-h.dataStore === "SundayDataIDB" && h.data.changes({}, c);
-}), i.response(function(e, t) {
-var n = [], r = t.update_seq;
-r !== undefined && h.dataStore === "SundayDataIDB" && h.data.put({
-config: "update_seq",
-value: r
-}, undefined, undefined, !0);
-for (var i in t.rows) delete t.rows[i].doc._localrev, r !== undefined && (t.rows[i].doc._update_seq = r), n.push(t.rows[i].doc);
-t.total_rows > 0 ? h.bulkDocs(n, {
-update_seq: !0
-}, l) : l.go({});
-}), r.allDocs({
-include_docs: !0,
-update_seq: !0
-}, i);
+i = enyo.createFromKind(r.dataStore, r);
+} else i = e.data;
+var a = this.data;
+return this.dataStore === "SundayDataIDB" ? (s.response(function(e, n) {
+i.replicate(a, t);
+}), a.replicate(i, s)) : (s.response(function(e, n) {
+a.replicate(i, t);
+}), i.replicate(a, s)), n;
 }
 }
 }), enyo.createFromKind = function(e, t) {
@@ -2218,7 +2264,7 @@ e === undefined && (e = function(e) {
 return console.log("value:", e), e;
 });
 if (this.value === null) this.resultStack.push(e); else {
-var t = e(value);
+var t = e(this.value);
 t !== undefined ? this.setValue(t) : this.setValue(this.value);
 }
 return this;
@@ -2266,7 +2312,7 @@ e.setValue(t);
 };
 return this.resultStack.push(t), this;
 }, this.bulkDocs = function(e, t) {
-if (e !== undefined) {
+if (e === undefined) {
 var n = this, r = function(e) {
 return e !== undefined && e instanceof Array ? n.parent.bulkDocs(e, t).done(function(e) {
 n.setValue(e);
