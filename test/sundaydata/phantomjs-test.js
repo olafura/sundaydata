@@ -74,3 +74,4 @@ setTimeout(function() {
 	console.log("timed out after 1 minute");
 	phantom.exit(1);
 }, 60 * 1000);
+
