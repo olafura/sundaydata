@@ -124,7 +124,7 @@ enyo.kind({
 		//objectStore.createIndex("changes", "_update_seq", {unique: false});
 	},
 	constructor: function (database) {
-		console.log("database",database);
+		//console.log("database",database);
 		this.inherited(arguments);
 		this.preque = [];
 		this.dbcallback = new enyo.Async();
@@ -258,7 +258,7 @@ enyo.kind({
 		this.unrollpreque();
 	},
 	put: function (doc, options, async, config) {
-		console.log("arguments",arguments);
+		//console.log("arguments",arguments);
 		if (async === undefined) {
 			async = new enyo.Async();
 		}
