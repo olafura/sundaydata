@@ -134,11 +134,7 @@ enyo.kind({
 		if (this.data) {
 			this.data.destroy();
 		}
-		if (this.host !== "") {
-			this.data = enyo.createFromKind(this.dataStore, this);
-		} else {
-			this.data = enyo.createFromKind(this.dataStore, this);
-		}
+		this.data = enyo.createFromKind(this.dataStore, this);
 		if (this.generated) {
 			this.render();
 		}
@@ -200,6 +196,7 @@ enyo.kind({
 				return response;
 			});
 			async.response(function (inSender, inResponse) {
+				//console.log("inSender",inSender);
 				ret.setValue(inResponse);
 			});
 			this.data.put(doc, options, async);
@@ -343,11 +340,13 @@ enyo.kind({
 			var ret = new SundayDataReturn();
 			ret.parent = this;
 			async.error(function(inSender, inResponse) {
+				//console.log("error");
 				var response = {"error": "Unknown", "reason": inResponse};
 				this.recover();
 				return response;
 			});
 			async.response(function (inSender, inResponse) {
+				//console.log("response");
 				ret.setValue(inResponse);
 			});
 			this.data.query(fun, options, async);
@@ -361,7 +360,7 @@ enyo.kind({
 
 			db.replicate("http://localhost:5984/test123");
 	*/
-	replicate: function (url, async) {
+	replicate: function (url, options, async) {
 		if(this.data) {
 			if(async === undefined) {
 				async = new this.data.async();	
@@ -407,14 +406,14 @@ enyo.kind({
 			var parent = this.data;
 			if(this.dataStore === "SundayDataIDB") {
 				asyncbridge.response(function(inSender, inResponse) {
-					from.replicate(parent, async);
+					from.replicate(parent, options, async);
 				});
-				parent.replicate(from, asyncbridge);
+				parent.replicate(from, options, asyncbridge);
 			} else {
 				asyncbridge.response(function(inSender, inResponse) {
-					parent.replicate(from, async);
+					parent.replicate(from, options, async);
 				});
-				from.replicate(parent, asyncbridge);
+				from.replicate(parent, options, asyncbridge);
 			}
 			return ret;
 		} else {
