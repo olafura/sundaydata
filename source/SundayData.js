@@ -441,7 +441,7 @@ var SundayDataReturn = function() {
 	};
 	this.done = function (fun) {
 		if(fun === undefined) { 
-			fun = function(value) { console.log("value:",value); return value; };
+			fun = function(value) { console.log("value:",JSON.stringify(value)); return value; };
 		}
 		if (this.value === null) {
 			this.resultStack.push(fun);
