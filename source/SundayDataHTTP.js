@@ -206,14 +206,22 @@ enyo.kind({
 		ajax.go();
 		return ajax;
 	},
-	changes: function (since, ajax) {
+	changes: function (since, options, ajax) {
+		//console.log("options",options);
+		//console.log("changes");
 		if (since === undefined) {
 			since = 0;
+		}
+		var optionsstring = "";
+		if (options !== undefined) {
+			for(var i in options) {
+				optionsstring += "&" + i + "="+options[i];
+			}
 		}
 		if (ajax === undefined) {
 			ajax = new enyo.Ajax();
 		}
-		ajax.url = this.host + "/" + this.database + "/_changes?include_docs=true&since=" + since;
+		ajax.url = this.host + "/" + this.database + "/_changes?include_docs=true&since=" + since + optionsstring;
 		ajax.method = "GET";
 		ajax.cacheBust = false;
 		if(this.username !== "" && this.password !== "") {
@@ -221,9 +229,8 @@ enyo.kind({
 		}
 		ajax.go();
 		return ajax;
-
 	},
-	replicate: function(from, async) {
+	replicate: function(from, options, async) {
 		var fromasync = new from.async();
 		var toasync = new this.async();	
 		//console.log("from",from);
