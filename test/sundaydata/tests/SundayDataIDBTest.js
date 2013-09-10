@@ -2,6 +2,7 @@ enyo.kind({
 	name: "SundayDataIDBTest",
 	kind: enyo.TestSuite,
 	test1: function() {
+		var SundayData = enyo.global.SundayData;
                 var testid = "test"+Math.uuid(32, 16).toLowerCase();
                 var testSD = new SundayData("idb://"+testid+"/");
 		var assertEqual = enyo.bind(this, this.assertEqual);
@@ -12,6 +13,7 @@ enyo.kind({
 		});
 	},
 	test2: function() {
+		var SundayData = enyo.global.SundayData;
                 var testid = "test"+Math.uuid(32, 16).toLowerCase();
                 var testSD = new SundayData("idb://"+testid+"/");
 		var assertEqual = enyo.bind(this, this.assertEqual);
@@ -25,6 +27,7 @@ enyo.kind({
 		);
 	},
 	test3: function() {
+		var SundayData = enyo.global.SundayData;
                 var testid = "test"+Math.uuid(32, 16).toLowerCase();
                 var testSD = new SundayData("idb://"+testid+"/");
 		var assertTrue = enyo.bind(this, this.assertTrue);
@@ -41,6 +44,7 @@ enyo.kind({
 		);
 	},
 	test4: function() {
+		var SundayData = enyo.global.SundayData;
                 var testid = "test"+Math.uuid(32, 16).toLowerCase();
                 var testSD = new SundayData("idb://"+testid+"/");
 		var assertNotEqual = enyo.bind(this, this.assertNotEqual);

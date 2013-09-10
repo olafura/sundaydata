@@ -1469,6 +1469,7 @@ onCommit: "commit"
 DOC_STORE: "doc-store",
 CONFIG_STORE: "config-store",
 idb: !1,
+max_number: 9007199254740992,
 viewfunctions: {},
 returnarray: {},
 commit: function(e, t) {
@@ -1513,8 +1514,8 @@ t["continue"]();
 unrollpreque: function() {
 pq = this.preque;
 var e = pq.length;
-for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async, pq[t].config) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async, pq[t].config) : pq[t].type === "query" && this.remove(pq[t].fun, pq[t].options, pq[t].async);
-this.preque = [];
+for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "putupdate" ? this.putupdate(pq[t].async, pq[t].doc, pq[t].options, pq[t].ev) : pq[t].type === "runview" ? this.runview(pq[t].view, pq[t].funstring, pq[t].docu) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async, pq[t].config) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async, pq[t].config) : pq[t].type === "query" && this.query(pq[t].fun, pq[t].options, pq[t].async);
+this.preque.pop();
 },
 versioncomplete: function(e) {
 this.dbcallback.responders.length === 0 ? this.dbcallback.response(function(e, t) {
@@ -1557,57 +1558,91 @@ ok: !0
 ok: !0
 });
 },
-runview: function(view, funstring, docu) {
-if (docu !== undefined) {
-var emit = function(e, t) {
-docu["_view_" + view] = e, docu["_view_" + view + "_value"] = t;
-};
-eval("var fun = " + funstring), fun(docu), "_view_" + view in docu || (docu["_view_" + view] = null, docu["_view_" + view + "_value"] = null), async = new enyo.Async;
+runview: function(view, funstring, docu, viewid, last) {
+if (this.idb) if (docu !== undefined) {
+if (docu._id !== undefined) {
+var newdoc = {}, emit = function(e, t) {
+newdoc["_view_" + view] = e, newdoc["_view_" + view + "_value"] = t;
+}, log = console.log;
+eval("var fun = " + funstring), fun(docu), "_view_" + view in newdoc || (newdoc["_view_" + view] = null, newdoc["_view_" + view + "_value"] = null);
+if (view === last) {
+enyo.mixin(docu, newdoc);
+for (var viewdoc in this.returnarray[viewid]) enyo.mixin(docu, this.returnarray[viewid][viewdoc]);
+async = new enyo.Async;
 var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), datastore = txn.objectStore(this.DOC_STORE).get(docu._id);
-datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu, {}), datastore.onerror = enyo.bind(this, this.handleerror, async);
+datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu, {
+update_seq: !0
+}), datastore.onerror = enyo.bind(this, this.handleerror, async);
+} else this.returnarray[viewid].push(newdoc);
+}
 } else {
 var async = new enyo.Async, parent = this;
 async.response(function(e, t) {
 for (var n in t.rows) {
-var r = t.rows[n].id.match(/^_design\/(.*)/);
-r === null && parent.runview(view, funstring, t.rows[n].value);
+var r = t.rows[n].id.match(/^_design\/(.*)/), i = t.rows[n].id;
+r === null && (parent.returnarray[viewid + "_" + i] === undefined && (parent.returnarray[viewid + "_" + i] = []), parent.runview(view, funstring, t.rows[n].doc, viewid + "_" + i, last));
 }
-}), this.allDocs({}, async);
-}
+}), this.allDocs({
+include_docs: !0
+}, async);
+} else this.preque.push({
+type: "runview",
+view: view,
+funstring: funstring,
+docu: docu
+});
 },
 upgradeneededview: function(e, t) {
 var n = t.currentTarget.transaction.objectStore(this.DOC_STORE);
-for (var r in e) n.createIndex(e[r].replace("/", "_"), "_view_" + e[r].replace("/", "_"), {
+for (var r in e) {
+var i = e[r].replace("/", "_");
+n.indexNames.contains(i) === !1 && n.createIndex(i, "_view_" + i, {
 unique: !1
 });
+}
 },
 putview: function(e, t, n) {
 this.idb = n.target.result;
 var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), i = r.objectStore(this.DOC_STORE).get(e._id);
-i.onsuccess = enyo.bind(this, this.putupdate, t, e, {}), i.onerror = enyo.bind(this, this.handleerror, t);
+i.onsuccess = enyo.bind(this, this.putupdate, t, e, {
+update_seq: !0
+}), i.onerror = enyo.bind(this, this.handleerror, t), this.unrollpreque();
 },
 put: function(e, t, n, r) {
 n === undefined && (n = new enyo.Async);
+var i = t ? t.update_seq : !1;
 if (this.idb) {
-var i = null;
-r || (e._id === undefined && (e._id = Math.uuid(32, 16).toLowerCase()), e._localrev === undefined && (e._localrev = "1-" + Math.uuid(32, 16).toLowerCase()), i = e._id.match(/_design\/(.*)/));
-if (i === null) {
-if (this.viewfunctions.length !== 0) {
-var s = this.DOC_STORE, o;
-if (r) s = this.CONFIG_STORE, o = this.idb.transaction(s, IDBTransaction.READ_WRITE), putdoc = o.objectStore(s).put(e), putdoc.onsuccess = enyo.bind(this, this.putsuccess, n, ""), putdoc.onerror = enyo.bind(this, this.handleerror, n); else {
-o = this.idb.transaction(s, IDBTransaction.READ_WRITE);
-var u = o.objectStore(s).get(e._id);
-u.onsuccess = enyo.bind(this, this.putupdate, n, e, t), u.onerror = enyo.bind(this, this.handleerror, n);
-for (var a in this.viewfunctions) this.runview(a, this.viewfunctions[a], e);
+var s = null, o, u, a;
+r || (e._id === undefined && (e._id = Math.uuid(32, 16).toLowerCase()), e._localrev === undefined && (e._localrev = "1-" + Math.uuid(32, 16).toLowerCase()), s = e._id.match(/_design\/(.*)/));
+if (s === null) {
+var f = this.DOC_STORE, l;
+if (r) {
+f = this.CONFIG_STORE, l = this.idb.transaction(f, IDBTransaction.READ_WRITE);
+var c = l.objectStore(f).put(e);
+c.onsuccess = enyo.bind(this, this.putsuccess, n, ""), c.onerror = enyo.bind(this, this.handleerror, n);
+} else {
+l = this.idb.transaction(f, IDBTransaction.READ_WRITE);
+var h = l.objectStore(f).get(e._id);
+h.onsuccess = enyo.bind(this, this.putupdate, n, e, t), h.onerror = enyo.bind(this, this.handleerror, n), o = [];
+for (var p in this.viewfunctions) o.push(p);
+if (o.length !== 0) {
+a = "views" + Math.uuid(32, 16).toLowerCase(), this.returnarray[a] = [], u = o[o.length - 1];
+for (var d in this.viewfunctions) this.runview(d, this.viewfunctions[d], e, a, u);
 }
 }
 } else if (e.views !== undefined) {
-var f = e._id.match(/^_design\/(.*)/), l = [];
-for (var c in e.views) this.viewfunctions[f[1] + "_" + c] = e.views[c].map, l.push(f[1] + "/" + c), this.runview(f[1] + "/" + c, e.views[c].map);
-var h = this.idb.version;
+var v = e._id.match(/^_design\/(.*)/), m = [];
+o = [];
+for (var g in e.views) o.push(g);
+u = v[1] + "_" + o[o.length - 1], a = "views" + Math.uuid(32, 16).toLowerCase();
+for (var y in e.views) {
+var b = v[1] + "_" + y;
+this.viewfunctions[b] = e.views[y].map, m.push(b), enyo.job(b, enyo.bind(this, "runview", b, e.views[y].map, undefined, a, u), 50);
+}
+var w = this.idb.version;
 this.idb.close(), this.idb = !1;
-var p = indexedDB.open(this.database, h + 1);
-p.onsuccess = enyo.bind(this, this.putview, e, n), p.onerror = enyo.bind(this, this.handleerror, this.dbcallback), p.onupgradeneeded = enyo.bind(this, this.upgradeneededview, l), p.onblocked = function(e) {};
+var E = indexedDB.open(this.database, w + 1);
+E.onsuccess = enyo.bind(this, this.putview, e, n), E.onerror = enyo.bind(this, this.handleerror, this.dbcallback), E.onupgradeneeded = enyo.bind(this, this.upgradeneededview, m), E.onblocked = function(e) {};
 }
 } else this.preque.push({
 type: "put",
@@ -1619,15 +1654,17 @@ async: n
 return n;
 },
 putupdate: function(e, t, n, r) {
+if (this.idb) {
 var i = r.target.result, s = this.DOC_STORE, o = this.idb.transaction(s, IDBTransaction.READ_WRITE), u = {}, a = n ? n.update_seq : !1;
 if (i) {
-var f = i._deleted ? !0 : !1, l = i._rev !== undefined ? i._rev[0] : 0, c = t._rev !== undefined ? t._rev[0] : 0, h = c > l;
+var f = i._deleted ? !0 : !1, l = i._rev !== undefined ? i._rev[0] : 0, c = t._rev !== undefined ? t._rev[0] : 0, h = c > l, p = /^_view_.*/;
+for (var d in i.doc) d.match(p) !== null && t[d] === undefined && (t[d] = i[d]);
 if (h || i._localrev !== undefined || f) if (h || f || i._localrev === t._localrev || parseInt(t._localrev[0], 10) > parseInt(i._localrev[0], 10)) {
-if (!f) {
-var p;
-h ? p = parseInt(i._localrev[0], 10) + 1 : p = parseInt(t._localrev[0], 10) + 1, t._localrev = p + "-" + Math.uuid(32, 16).toLowerCase();
+if (!f && !a) {
+var v;
+h ? v = parseInt(i._localrev[0], 10) + 1 : v = parseInt(t._localrev[0], 10) + 1, t._localrev = v + "-" + Math.uuid(32, 16).toLowerCase();
 }
-t._revhistory = i, a || (t._update_seq = 0), u = o.objectStore(s).put(t), u.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
+t._revhistory = i, a || (t._update_seq = this.max_number), u = o.objectStore(s).put(t), u.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
 } else e.responders.length === 0 ? e.response(function(e, t) {
 return {
 error: "conflict",
@@ -1637,7 +1674,14 @@ reason: "Document update conflict."
 error: "conflict",
 reason: "Document update conflict."
 });
-} else a || (t._update_seq = 0), u = o.objectStore(s).put(t), u.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
+} else a || (t._update_seq = this.max_number), u = o.objectStore(s).put(t), u.onsuccess = enyo.bind(this, this.putsuccess, e, t._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
+} else this.preque.push({
+type: "putupdate",
+doc: t,
+options: n,
+ev: r,
+async: e
+});
 },
 putsuccess: function(e, t, n) {
 var r = n.target.result;
@@ -1659,34 +1703,35 @@ rev: t
 });
 },
 bulkDocs: function(e, t, n) {
+var r = this;
 n === undefined && (n = new enyo.Async);
-var r = t.update_seq ? {
+var i = t.update_seq ? {
 update_seq: !0
 } : {};
 if (this.idb) {
-var i = "bulk" + Math.uuid(32, 16).toLowerCase();
-this.returnarray[i] = [];
-var s = e.length;
+var s = "bulk" + Math.uuid(32, 16).toLowerCase();
+this.returnarray[s] = [];
+var o = e.length;
 putrespfun = function(e, t) {
-t.ok === !0 ? this.bulkDocsresults(n, s, i, {
+t.ok === !0 ? this.bulkDocsresults(n, o, s, {
 id: t.id,
 rev: t.rev
-}) : this.bulkDocsresults(n, s, i, t);
+}) : this.bulkDocsresults(n, o, s, t);
 }, removerespfun = function(e, t) {
-t.ok === !0 ? this.bulkDocsresults(n, s, i, {
+t.ok === !0 ? this.bulkDocsresults(n, o, s, {
 id: t.id,
 rev: t.rev,
 _deleted: !0
-}) : this.bulkDocsresults(n, s, i, t);
+}) : this.bulkDocsresults(n, o, s, t);
 };
-for (var o = 0; o < s; o++) {
-var u = e[o];
-if (u._deleted === undefined) {
-var a = this.put(u, r);
-a.response(this, putrespfun);
+for (var u = 0; u < o; u++) {
+var a = e[u];
+if (a._deleted === undefined) {
+var f = this.put(a, i);
+f.response(this, putrespfun);
 } else {
-var f = this.remove(u._id, u._localrev);
-f.response(this, removerespfun);
+var l = this.remove(a._id, a._localrev);
+l.response(this, removerespfun);
 }
 }
 } else this.preque.push({
@@ -1810,7 +1855,7 @@ return t;
 changessuccess: function(e, t, n) {
 var r = n.target.result;
 if (r) {
-if (r.key !== null && r.value._update_seq === 0) {
+if (r.key !== null && r.value._update_seq === this.max_number) {
 var i = {
 id: r.primaryKey,
 changes: [ {
@@ -1838,8 +1883,20 @@ n === undefined && (n = new enyo.Async);
 if (this.idb) {
 var r = "query" + Math.uuid(32, 16).toLowerCase();
 this.returnarray[r] = [];
-var i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), s = i.objectStore(this.DOC_STORE), o = s.index(e.replace("/", "_")).openCursor();
+var i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), s = i.objectStore(this.DOC_STORE);
+if (s.indexNames.contains(e.replace("/", "_"))) {
+var o = s.index(e.replace("/", "_")).openCursor();
 o.onsuccess = enyo.bind(this, this.querysuccess, n, r, e), o.onerror = enyo.bind(this, this.handleerror, n);
+} else n.response(function(t, n) {
+return {
+ok: !1,
+error: {
+status: 500,
+error: "query function does not excist",
+reason: e
+}
+};
+});
 } else this.preque.push({
 type: "query",
 fun: e,
@@ -1851,23 +1908,23 @@ return n;
 querysuccess: function(e, t, n, r) {
 var i = r.target.result;
 if (i) {
-if (i.key !== null || i.value["_view_" + n.replace("/", "_") + "_value"] !== null) {
+if (i.key !== null) {
 var s = {
 key: i.key,
 id: i.primaryKey,
-value: i.value["_view_" + n.replace("/", "_") + "_value"]
+value: i.value["_view_" + n.replace("/", "_") + "_value"],
+doc: i.value
 };
-if (s.value._deleted === undefined) {
-delete s.value._revhistory;
+if (s.doc && s.doc._deleted === undefined) {
+delete s.doc._revhistory;
 var o = /^_view_.*/;
-for (var u in s.value) u.match(o) !== null && delete s.value[u];
+for (var u in s.doc) u.match(o) !== null && delete s.doc[u];
 this.returnarray[t].push(s);
 }
 }
 i["continue"]();
 } else {
 var a = {
-total_rows: this.returnarray[t].length,
 rows: this.returnarray[t]
 };
 delete this.returnarray[t], e.responders.length === 0 ? e.response(this, function(e, t) {
@@ -1894,7 +1951,7 @@ return n;
 removeget: function(e, t, n, r) {
 var i = r.target.result, s = this.DOC_STORE;
 n && (s = this.CONFIG_STORE);
-if (t === i._localrev) {
+if (i && t === i._localrev) {
 doc = {
 _deleted: !0
 }, doc._id = i._id, doc._localrev = i._localrev, doc._revhistory = i;
@@ -1915,34 +1972,34 @@ id: t,
 localrev: n
 });
 },
-replicate: function(e, t) {
-var n = new e.async, r = new e.async, i = new this.async, s = new this.async, o = this;
-n.response(function(e, n) {
-var r = [], i = n.update_seq;
+replicate: function(e, t, n) {
+var r = new e.async, i = new e.async, s = new this.async, o = this;
+r.response(function(e, t) {
+var r = [], i = t.update_seq;
 i !== undefined && o.put({
 config: "update_seq",
 value: i
 }, undefined, undefined, !0);
-for (var s in n.rows) delete n.rows[s].doc._localrev, i !== undefined && (n.rows[s].doc._update_seq = i), r.push(n.rows[s].doc);
-n.total_rows > 0 ? o.bulkDocs(r, {
+for (var s in t.rows) delete t.rows[s].doc._localrev, i !== undefined && (t.rows[s].doc._update_seq = i), r.push(t.rows[s].doc);
+t.total_rows > 0 ? o.bulkDocs(r, {
 update_seq: !0
-}, t) : t.go({});
-}), r.response(function(e, n) {
-var r = [], i = n.last_seq;
+}, n) : n.go({});
+}), i.response(function(e, t) {
+var r = [], i = t.last_seq;
 i !== undefined && o.put({
 config: "update_seq",
 value: i
 }, undefined, undefined, !0);
-for (var u in n.results) delete n.results[u].doc._localrev, i !== undefined && (n.results[u].doc._update_seq = i), r.push(n.results[u].doc);
+for (var s in t.results) delete t.results[s].doc._localrev, i !== undefined && (t.results[s].doc._update_seq = i), r.push(t.results[s].doc);
 r.length > 0 ? o.bulkDocs(r, {
 update_seq: !0
-}, t) : s.go({});
-}), i.response(function(t, i) {
-i.value !== undefined ? e.changes(i.value, r) : e.allDocs({
+}, n) : n.go({});
+}), s.response(function(n, s) {
+s.value !== undefined ? e.changes(s.value, t, i) : t !== undefined ? e.changes(0, t, i) : e.allDocs({
 include_docs: !0,
 update_seq: !0
-}, n);
-}), this.get("update_seq", i, !0);
+}, r);
+}), this.get("update_seq", s, !0);
 }
 });
 
@@ -2047,32 +2104,35 @@ return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.da
 Authorization: this.authHeader()
 }), n.go(), n;
 },
-changes: function(e, t) {
-return e === undefined && (e = 0), t === undefined && (t = new enyo.Ajax), t.url = this.host + "/" + this.database + "/_changes?include_docs=true&since=" + e, t.method = "GET", t.cacheBust = !1, this.username !== "" && this.password !== "" && (t.headers = {
+changes: function(e, t, n) {
+e === undefined && (e = 0);
+var r = "";
+if (t !== undefined) for (var i in t) r += "&" + i + "=" + t[i];
+return n === undefined && (n = new enyo.Ajax), n.url = this.host + "/" + this.database + "/_changes?include_docs=true&since=" + e + r, n.method = "GET", n.cacheBust = !1, this.username !== "" && this.password !== "" && (n.headers = {
 Authorization: this.authHeader()
-}), t.go(), t;
+}), n.go(), n;
 },
-replicate: function(e, t) {
-var n = new e.async, r = new this.async, i = this, s = [];
-r.response(function(n, r) {
-if (s.length > 0) {
+replicate: function(e, t, n) {
+var r = new e.async, i = new this.async, s = this, o = [];
+i.response(function(t, r) {
+if (o.length > 0) {
 var i = [];
-for (var o in r) {
-var u = r[o], a = s[o];
+for (var s in r) {
+var u = r[s], a = o[s];
 u.ok && (a._rev = u.rev), i.push(a);
 }
-e.bulkDocs(s, {
+e.bulkDocs(o, {
 update_seq: !0
-}, t);
-} else t.go(r);
-}), n.response(function(e, n) {
-var o = [];
-for (var u in n.results) {
-var a = n.results[u].doc;
-s.push(a), delete a._localrev, delete a._update_seq, o.push(a);
+}, n);
+} else n.go(r);
+}), r.response(function(e, t) {
+var r = [];
+for (var u in t.results) {
+var a = t.results[u].doc;
+o.push(a), delete a._localrev, delete a._update_seq, r.push(a);
 }
-o.length > 0 ? i.bulkDocs(o, {}, r) : t.go({});
-}), e.changes({}, n);
+r.length > 0 ? s.bulkDocs(r, {}, i) : n.go({});
+}), e.changes({}, r);
 }
 });
 
@@ -2105,7 +2165,7 @@ n !== null && n[1] !== "" && n[4] !== "" && (n[3] !== undefined && (usernamepass
 }
 },
 dataStoreChanged: function() {
-this.data && this.data.destroy(), this.host !== "" ? this.data = enyo.createFromKind(this.dataStore, this) : this.data = enyo.createFromKind(this.dataStore, this), this.generated && this.render();
+this.data && this.data.destroy(), this.data = enyo.createFromKind(this.dataStore, this), this.generated && this.render();
 },
 removeDB: function(e) {
 if (this.data) {
@@ -2221,34 +2281,34 @@ r.setValue(t);
 }), this.data.query(e, t, n), r;
 }
 },
-replicate: function(e, t) {
+replicate: function(e, t, n) {
 if (this.data) {
-t === undefined && (t = new this.data.async);
-var n = new SundayDataReturn;
-n.parent = this, t.error(function(e, t) {
+n === undefined && (n = new this.data.async);
+var r = new SundayDataReturn;
+r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
 reason: t
 };
 return this.recover(), n;
-}), t.response(function(e, t) {
-n.setValue(t);
+}), n.response(function(e, t) {
+r.setValue(t);
 });
-var r = {}, i, s = new enyo.Async;
+var i = {}, s, o = new enyo.Async;
 if (typeof e != "object") {
-var o = e.match(this.idbcheck);
-if (o !== null) o[1] !== "" && (r.database = o[1], r.dataStore = "SundayDataIDB"); else {
-var u = e.match(this.httpcheck);
-u !== null && u[1] !== "" && u[4] !== "" && (r.dataStore = "SundayDataHTTP", r.host = u[1].replace(u[3], ""), r.database = u[4], u[3] !== undefined && (usernamepassword = u[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), r.username = usernamepassword[0], r.password = usernamepassword[1]));
+var u = e.match(this.idbcheck);
+if (u !== null) u[1] !== "" && (i.database = u[1], i.dataStore = "SundayDataIDB"); else {
+var a = e.match(this.httpcheck);
+a !== null && a[1] !== "" && a[4] !== "" && (i.dataStore = "SundayDataHTTP", i.host = a[1].replace(a[3], ""), i.database = a[4], a[3] !== undefined && (usernamepassword = a[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), i.username = usernamepassword[0], i.password = usernamepassword[1]));
 }
-i = enyo.createFromKind(r.dataStore, r);
-} else i = e.data;
-var a = this.data;
-return this.dataStore === "SundayDataIDB" ? (s.response(function(e, n) {
-i.replicate(a, t);
-}), a.replicate(i, s)) : (s.response(function(e, n) {
-a.replicate(i, t);
-}), i.replicate(a, s)), n;
+s = enyo.createFromKind(i.dataStore, i);
+} else s = e.data;
+var f = this.data;
+return this.dataStore === "SundayDataIDB" ? (o.response(function(e, r) {
+s.replicate(f, t, n);
+}), f.replicate(s, t, o)) : (o.response(function(e, r) {
+f.replicate(s, t, n);
+}), s.replicate(f, t, o)), r;
 }
 }
 }), enyo.createFromKind = function(e, t) {
@@ -2261,7 +2321,7 @@ this.resultStack = [], this.value = null, this.parent = null, this.setValue = fu
 this.value = e, this._results(e);
 }, this.done = function(e) {
 e === undefined && (e = function(e) {
-return console.log("value:", e), e;
+return console.log("value:", JSON.stringify(e)), e;
 });
 if (this.value === null) this.resultStack.push(e); else {
 var t = e(this.value);
