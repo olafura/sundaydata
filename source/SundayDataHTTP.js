@@ -9,11 +9,11 @@ enyo.kind({
 		password: ""
 	},
 	async: enyo.Ajax,
-	components: [{
+	/*components: [{
 			kind: "Signals",
 			onCommit: "commit"
 		}
-	],
+	],*/
 	returnarray: {},
 	authHeader: function() {
 		var retval = "Basic " + binb2b64(str2binb(this.username+":"+this.password));
@@ -158,6 +158,8 @@ enyo.kind({
 		return ajax;
 	},
 	allDocs: function (options, ajax) {
+		//console.log("http allDocs");
+		//console.log("options",options);
 		if (ajax === undefined) {
 			ajax = new enyo.Ajax();
 		}
@@ -233,11 +235,11 @@ enyo.kind({
 	replicate: function(from, options, async) {
 		var fromasync = new from.async();
 		var toasync = new this.async();	
-		//console.log("from",from);
+		//console.log("http from",from);
 		var parent = this;
 		var newdocs = [];
 		toasync.response(function (inSender, inResponse) {
-			//console.log("fromasync2");
+			//console.log("http toasync");
 			//console.log("inSender froma2", inSender);
 			//console.log("inResponse froma2", inResponse);
 			//console.log("newdocs",newdocs);
@@ -257,23 +259,31 @@ enyo.kind({
 			}
 		});
 		fromasync.response(function (inSender, inResponse) {
-			//console.log("toasync");
+			//console.log("http fromasync");
 			//console.log("inSender toa", inSender);
-			//console.log("inResponse toa", inResponse);
+			//console.log("fromasync inResponse toa", inResponse);
 			var docs = [];
 			for(var doc in inResponse.results) {
 				var newdoc = inResponse.results[doc].doc;
 				newdocs.push(newdoc);
+				//console.log("newdoc",newdoc);
 				delete newdoc._localrev;
 				delete newdoc._update_seq;
 				docs.push(newdoc);
 			}
+			//console.log("docs",docs);
 			if(docs.length > 0) {
 				parent.bulkDocs(docs, {}, toasync);
 			} else {
 				async.go({});
 			}
 		});
-		from.changes({},fromasync);	
+		if(options !== undefined && options.attachments) {
+			//console.log("http replicate attachments");
+			from.changes({include_docs: true, attachments: true, base64: true},fromasync);	
+		} else {
+			//console.log("http replicate");
+			from.changes({include_docs: true},fromasync);	
+		}
 	}
 });
