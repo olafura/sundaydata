@@ -1,29 +1,9 @@
 
 // enyo.js
 
-(function() {
-var e = "enyo.js";
-enyo = window.enyo || {}, enyo.locateScript = function(e) {
-var t = document.getElementsByTagName("script");
-for (var n = t.length - 1, r, i, s = e.length; n >= 0 && (r = t[n]); n--) if (!r.located) {
-i = r.getAttribute("src") || "";
-if (i.slice(-s) == e) return r.located = !0, {
-path: i.slice(0, Math.max(0, i.lastIndexOf("/"))),
-node: r
-};
-}
-}, enyo.args = enyo.args || {};
-var t = enyo.locateScript(e);
-if (t) {
-enyo.args.root = (enyo.args.root || t.path).replace("/source", "");
-for (var n = 0, r = t.node.attributes.length, i; n < r && (i = t.node.attributes.item(n)); n++) enyo.args[i.nodeName] = i.value;
-}
-})();
+var enyo = {};
 
-// ../../loader.js
-
-(function() {
-enyo = window.enyo || {}, enyo.pathResolverFactory = function() {
+enyo.pathResolverFactory = function() {
 this.paths = {};
 }, enyo.pathResolverFactory.prototype = {
 addPath: function(e, t) {
@@ -43,194 +23,16 @@ return t = !0, n(r[i]) || "";
 do t = !1, s = s.replace(this.rewritePattern, i); while (t);
 return s;
 }
-}, enyo.path = new enyo.pathResolverFactory, enyo.loaderFactory = function(e, t) {
-this.machine = e, this.packages = [], this.modules = [], this.sheets = [], this.stack = [], this.pathResolver = t || enyo.path, this.packageName = "", this.packageFolder = "", this.finishCallbacks = {};
-}, enyo.loaderFactory.prototype = {
-verbose: !1,
-loadScript: function(e) {
-this.machine.script(e);
-},
-loadSheet: function(e) {
-this.machine.sheet(e);
-},
-loadPackage: function(e) {
-this.machine.script(e);
-},
-report: function() {},
-load: function() {
-this.more({
-index: 0,
-depends: arguments || []
-});
-},
-more: function(e) {
-if (e && this.continueBlock(e)) return;
-var t = this.stack.pop();
-t ? (this.verbose && console.groupEnd("* finish package (" + (t.packageName || "anon") + ")"), this.packageFolder = t.folder, this.packageName = "", this.more(t)) : this.finish();
-},
-finish: function() {
-this.packageFolder = "", this.verbose && console.log("-------------- fini");
-for (var e in this.finishCallbacks) this.finishCallbacks[e] && (this.finishCallbacks[e](), this.finishCallbacks[e] = null);
-},
-continueBlock: function(e) {
-while (e.index < e.depends.length) {
-var t = e.depends[e.index++];
-if (t) if (typeof t == "string") {
-if (this.require(t, e)) return !0;
-} else this.pathResolver.addPaths(t);
-}
-},
-require: function(e, t) {
-var n = this.pathResolver.rewrite(e), r = this.getPathPrefix(e);
-n = r + n;
-if (n.slice(-4) == ".css" || n.slice(-5) == ".less") this.verbose && console.log("+ stylesheet: [" + r + "][" + e + "]"), this.requireStylesheet(n); else {
-if (n.slice(-3) != ".js" || n.slice(-10) == "package.js") return this.requirePackage(n, t), !0;
-this.verbose && console.log("+ module: [" + r + "][" + e + "]"), this.requireScript(e, n);
-}
-},
-getPathPrefix: function(e) {
-var t = e.slice(0, 1);
-return t != "/" && t != "\\" && t != "$" && !/^https?:/i.test(e) ? this.packageFolder : "";
-},
-requireStylesheet: function(e) {
-this.sheets.push(e), this.loadSheet(e);
-},
-requireScript: function(e, t) {
-this.modules.push({
-packageName: this.packageName,
-rawPath: e,
-path: t
-}), this.loadScript(t);
-},
-decodePackagePath: function(e) {
-var t = "", n = "", r = "", i = "package.js", s = e.replace(/\\/g, "/").replace(/\/\//g, "/").replace(/:\//, "://").split("/"), o, u;
-if (s.length) {
-var a = s.pop() || s.pop() || "";
-a.slice(-i.length) !== i ? s.push(a) : i = a, r = s.join("/"), r = r ? r + "/" : "", i = r + i;
-for (o = s.length - 1; o >= 0; o--) if (s[o] == "source") {
-s.splice(o, 1);
-break;
-}
-n = s.join("/");
-for (o = s.length - 1; u = s[o]; o--) if (u == "lib" || u == "enyo") {
-s = s.slice(o + 1);
-break;
-}
-for (o = s.length - 1; u = s[o]; o--) (u == ".." || u == ".") && s.splice(o, 1);
-t = s.join("-");
-}
-return {
-alias: t,
-target: n,
-folder: r,
-manifest: i
-};
-},
-aliasPackage: function(e) {
-var t = this.decodePackagePath(e);
-this.manifest = t.manifest, t.alias && (this.pathResolver.addPath(t.alias, t.target), this.packageName = t.alias, this.packages.push({
-name: t.alias,
-folder: t.folder
-})), this.packageFolder = t.folder;
-},
-requirePackage: function(e, t) {
-t.folder = this.packageFolder, this.aliasPackage(e), t.packageName = this.packageName, this.stack.push(t), this.report("loading package", this.packageName), this.verbose && console.group("* start package [" + this.packageName + "]"), this.loadPackage(this.manifest);
-}
-};
-})();
-
-// boot.js
-
-enyo.execUnsafeLocalFunction = function(e) {
-typeof MSApp == "undefined" ? e() : MSApp.execUnsafeLocalFunction(e);
-}, enyo.machine = {
-sheet: function(e) {
-var t = "text/css", n = "stylesheet", r = e.slice(-5) == ".less";
-r && (window.less ? (t = "text/less", n = "stylesheet/less") : e = e.slice(0, e.length - 4) + "css");
-var i;
-enyo.runtimeLoading || r ? (i = document.createElement("link"), i.href = e, i.media = "screen", i.rel = n, i.type = t, document.getElementsByTagName("head")[0].appendChild(i)) : (i = function() {
-document.write('<link href="' + e + '" media="screen" rel="' + n + '" type="' + t + '" />');
-}, enyo.execUnsafeLocalFunction(i)), r && window.less && (less.sheets.push(i), enyo.loader.finishCallbacks.lessRefresh || (enyo.loader.finishCallbacks.lessRefresh = function() {
-less.refresh(!0);
-}));
-},
-script: function(e, t, n) {
-if (!enyo.runtimeLoading) document.write('<script src="' + e + '"' + (t ? ' onload="' + t + '"' : "") + (n ? ' onerror="' + n + '"' : "") + "></scri" + "pt>"); else {
-var r = document.createElement("script");
-r.src = e, r.onload = t, r.onerror = n, document.getElementsByTagName("head")[0].appendChild(r);
-}
-},
-inject: function(e) {
-document.write('<script type="text/javascript">' + e + "</scri" + "pt>");
-}
-}, enyo.loader = new enyo.loaderFactory(enyo.machine), enyo.depends = function() {
-var e = enyo.loader;
-if (!e.packageFolder) {
-var t = enyo.locateScript("package.js");
-t && t.path && (e.aliasPackage(t.path), e.packageFolder = t.path + "/");
-}
-e.load.apply(e, arguments);
-}, function() {
-function n(r) {
-r && r();
-if (t.length) {
-var i = t.shift(), s = i[0], o = e.isArray(s) ? s : [ s ], u = i[1];
-e.loader.finishCallbacks.runtimeLoader = function() {
-n(function() {
-u && u(s);
-});
-}, e.loader.packageFolder = "./", e.depends.apply(this, o);
-} else e.runtimeLoading = !1, e.loader.packageFolder = "";
-}
-var e = window.enyo, t = [];
-e.load = function(r, i) {
-t.push(arguments), e.runtimeLoading || (e.runtimeLoading = !0, n());
-};
-}(), enyo.path.addPaths({
-enyo: enyo.args.root,
-lib: "$enyo/../lib"
-});
-
-// log.js
-
-enyo.logging = {
-level: 99,
-levels: {
-log: 20,
-warn: 10,
-error: 0
-},
-shouldLog: function(e) {
-var t = parseInt(this.levels[e], 0);
-return t <= this.level;
-},
-_log: function(e, t) {
-if (typeof console == "undefined") return;
-var n = enyo.isArray(t) ? t : enyo.cloneArray(t);
-enyo.dumbConsole && (n = [ n.join(" ") ]);
-var r = console[e];
-r && r.apply ? r.apply(console, n) : console.log.apply ? console.log.apply(console, n) : console.log(n.join(" "));
-},
-log: function(e, t) {
-typeof console != "undefined" && this.shouldLog(e) && this._log(e, t);
-}
-}, enyo.setLogLevel = function(e) {
-var t = parseInt(e, 0);
-isFinite(t) && (enyo.logging.level = t);
-}, enyo.log = function() {
-enyo.logging.log("log", arguments);
-}, enyo.warn = function() {
-enyo.logging.log("warn", arguments);
-}, enyo.error = function() {
-enyo.logging.log("error", arguments);
-};
+}, enyo.log = function(e) {
+console.log(e);
+}, enyo.path = new enyo.pathResolverFactory, enyo.platform = {}, enyo.json = JSON, enyo.warn = enyo.log;
 
 // lang.js
 
 (function() {
 enyo.global = this, enyo._getProp = function(e, t, n) {
 var r = n || enyo.global;
-for (var i = 0, s; r && (s = e[i]); i++) r = s in r ? r[s] : t ? r[s] = {} : undefined;
+for (var i = 0, s; r && (s = e[i]); i++) s === "enyo" ? r = enyo : r = s in r ? r[s] : t ? r[s] = {} : undefined;
 return r;
 }, enyo.setObject = function(e, t, n) {
 var r = e.split("."), i = r.pop(), s = enyo._getProp(r, !0, n);
@@ -350,7 +152,7 @@ return e;
 };
 })();
 
-// job.js
+// ../lib/enyo/source/kernel/job.js
 
 enyo.job = function(e, t, n) {
 enyo.job.stop(e), enyo.job._jobs[e] = setTimeout(function() {
@@ -360,7 +162,7 @@ enyo.job.stop(e), t();
 enyo.job._jobs[e] && (clearTimeout(enyo.job._jobs[e]), delete enyo.job._jobs[e]);
 }, enyo.job._jobs = {};
 
-// macroize.js
+// ../lib/enyo/source/kernel/macroize.js
 
 enyo.macroize = function(e, t, n) {
 var r, i, s = e, o = n || enyo.macroize.pattern, u = function(e, n) {
@@ -378,7 +180,7 @@ return n in t ? r = t[n] : r = enyo.getObject(n, !1, t), r === undefined || r ==
 return s = s.replace(o, u), s;
 }, enyo.macroize.pattern = /\{\$([^{}]*)\}/g;
 
-// Oop.js
+// ../lib/enyo/source/kernel/Oop.js
 
 enyo.kind = function(e) {
 enyo._kindCtors = {};
@@ -440,7 +242,7 @@ return enyo.defaultCtor;
 enyo.mixin(enyo.Theme, e);
 };
 
-// Object.js
+// ../lib/enyo/source/kernel/Object.js
 
 enyo.kind({
 name: "enyo.Object",
@@ -506,359 +308,7 @@ this._setProperty(r, e, u);
 });
 };
 
-// Component.js
-
-enyo.kind({
-name: "enyo.Component",
-kind: enyo.Object,
-published: {
-name: "",
-id: "",
-owner: null
-},
-statics: {
-_kindPrefixi: {},
-_unnamedKindNumber: 0
-},
-defaultKind: "Component",
-handlers: {},
-toString: function() {
-return this.kindName;
-},
-constructor: function() {
-this._componentNameMap = {}, this.$ = {}, this.inherited(arguments);
-},
-constructed: function(e) {
-this.importProps(e), this.create();
-},
-importProps: function(e) {
-if (e) for (var t in e) this[t] = e[t];
-this.handlers = enyo.mixin(enyo.clone(this.kindHandlers), this.handlers);
-},
-create: function() {
-this.ownerChanged(), this.initComponents();
-},
-initComponents: function() {
-this.createChrome(this.kindComponents), this.createClientComponents(this.components);
-},
-createChrome: function(e) {
-this.createComponents(e, {
-isChrome: !0
-});
-},
-createClientComponents: function(e) {
-this.createComponents(e, {
-owner: this.getInstanceOwner()
-});
-},
-getInstanceOwner: function() {
-return !this.owner || this.owner.notInstanceOwner ? this : this.owner;
-},
-destroy: function() {
-this.destroyComponents(), this.setOwner(null), this.destroyed = !0;
-},
-destroyComponents: function() {
-enyo.forEach(this.getComponents(), function(e) {
-e.destroyed || e.destroy();
-});
-},
-makeId: function() {
-var e = "_", t = this.owner && this.owner.getId(), n = this.name || "@@" + ++enyo.Component._unnamedKindNumber;
-return (t ? t + e : "") + n;
-},
-ownerChanged: function(e) {
-e && e.removeComponent(this), this.owner && this.owner.addComponent(this), this.id || (this.id = this.makeId());
-},
-nameComponent: function(e) {
-var t = enyo.Component.prefixFromKindName(e.kindName), n, r = this._componentNameMap[t] || 0;
-do n = t + (++r > 1 ? String(r) : ""); while (this.$[n]);
-return this._componentNameMap[t] = Number(r), e.name = n;
-},
-addComponent: function(e) {
-var t = e.getName();
-t || (t = this.nameComponent(e)), this.$[t] && this.warn('Duplicate component name "' + t + '" in owner "' + this.id + '" violates ' + "unique-name-under-owner rule, replacing existing component in the hash and continuing, " + "but this is an error condition and should be fixed."), this.$[t] = e;
-},
-removeComponent: function(e) {
-delete this.$[e.getName()];
-},
-getComponents: function() {
-var e = [];
-for (var t in this.$) e.push(this.$[t]);
-return e;
-},
-adjustComponentProps: function(e) {
-this.defaultProps && enyo.mixin(e, this.defaultProps), e.kind = e.kind || e.isa || this.defaultKind, e.owner = e.owner || this;
-},
-_createComponent: function(e, t) {
-if (!e.kind && "kind" in e) throw "enyo.create: Attempt to create a null kind. Check dependencies for [" + e.name + "].";
-var n = enyo.mixin(enyo.clone(t), e);
-return this.adjustComponentProps(n), enyo.Component.create(n);
-},
-createComponent: function(e, t) {
-return this._createComponent(e, t);
-},
-createComponents: function(e, t) {
-if (e) {
-var n = [];
-for (var r = 0, i; i = e[r]; r++) n.push(this._createComponent(i, t));
-return n;
-}
-},
-getBubbleTarget: function() {
-return this.owner;
-},
-bubble: function(e, t, n) {
-var r = t || {};
-return "originator" in r || (r.originator = n || this), this.dispatchBubble(e, r, n);
-},
-bubbleUp: function(e, t, n) {
-var r = this.getBubbleTarget();
-return r ? r.dispatchBubble(e, t, this) : !1;
-},
-dispatchEvent: function(e, t, n) {
-this.decorateEvent(e, t, n);
-if (this.handlers[e] && this.dispatch(this.handlers[e], t, n)) return !0;
-if (this[e]) return this.bubbleDelegation(this.owner, this[e], e, t, this);
-},
-dispatchBubble: function(e, t, n) {
-return this.dispatchEvent(e, t, n) ? !0 : this.bubbleUp(e, t, n);
-},
-decorateEvent: function(e, t, n) {},
-bubbleDelegation: function(e, t, n, r, i) {
-var s = this.getBubbleTarget();
-if (s) return s.delegateEvent(e, t, n, r, i);
-},
-delegateEvent: function(e, t, n, r, i) {
-return this.decorateEvent(n, r, i), e == this ? this.dispatch(t, r, i) : this.bubbleDelegation(e, t, n, r, i);
-},
-dispatch: function(e, t, n) {
-var r = e && this[e];
-if (r) return r.call(this, n || this, t);
-},
-waterfall: function(e, t, n) {
-if (this.dispatchEvent(e, t, n)) return !0;
-this.waterfallDown(e, t, n || this);
-},
-waterfallDown: function(e, t, n) {
-for (var r in this.$) this.$[r].waterfall(e, t, n);
-}
-}), enyo.defaultCtor = enyo.Component, enyo.create = enyo.Component.create = function(e) {
-if (!e.kind && "kind" in e) throw "enyo.create: Attempt to create a null kind. Check dependencies for [" + (e.name || "") + "].";
-var t = e.kind || e.isa || enyo.defaultCtor, n = enyo.constructorForKind(t);
-return n || (enyo.error('no constructor found for kind "' + t + '"'), n = enyo.Component), new n(e);
-}, enyo.Component.subclass = function(e, t) {
-var n = e.prototype;
-t.components && (n.kindComponents = t.components, delete n.components);
-if (t.handlers) {
-var r = n.kindHandlers;
-n.kindHandlers = enyo.mixin(enyo.clone(r), n.handlers), n.handlers = null;
-}
-t.events && this.publishEvents(e, t);
-}, enyo.Component.publishEvents = function(e, t) {
-var n = t.events;
-if (n) {
-var r = e.prototype;
-for (var i in n) this.addEvent(i, n[i], r);
-}
-}, enyo.Component.addEvent = function(e, t, n) {
-var r, i;
-enyo.isString(t) ? (e.slice(0, 2) != "on" && (enyo.warn("enyo.Component.addEvent: event names must start with 'on'. " + n.kindName + " event '" + e + "' was auto-corrected to 'on" + e + "'."), e = "on" + e), r = t, i = "do" + enyo.cap(e.slice(2))) : (r = t.value, i = t.caller), n[e] = r, n[i] || (n[i] = function(t) {
-return this.bubble(e, t);
-});
-}, enyo.Component.prefixFromKindName = function(e) {
-var t = enyo.Component._kindPrefixi[e];
-if (!t) {
-var n = e.lastIndexOf(".");
-t = n >= 0 ? e.slice(n + 1) : e, t = t.charAt(0).toLowerCase() + t.slice(1), enyo.Component._kindPrefixi[e] = t;
-}
-return t;
-};
-
-// UiComponent.js
-
-enyo.kind({
-name: "enyo.UiComponent",
-kind: enyo.Component,
-published: {
-container: null,
-parent: null,
-controlParentName: "client",
-layoutKind: ""
-},
-handlers: {
-onresize: "resizeHandler"
-},
-addBefore: undefined,
-statics: {
-_resizeFlags: {
-showingOnly: !0
-}
-},
-create: function() {
-this.controls = [], this.children = [], this.containerChanged(), this.inherited(arguments), this.layoutKindChanged();
-},
-destroy: function() {
-this.destroyClientControls(), this.setContainer(null), this.inherited(arguments);
-},
-importProps: function(e) {
-this.inherited(arguments), this.owner || (this.owner = enyo.master);
-},
-createComponents: function() {
-var e = this.inherited(arguments);
-return this.discoverControlParent(), e;
-},
-discoverControlParent: function() {
-this.controlParent = this.$[this.controlParentName] || this.controlParent;
-},
-adjustComponentProps: function(e) {
-e.container = e.container || this, this.inherited(arguments);
-},
-containerChanged: function(e) {
-e && e.removeControl(this), this.container && this.container.addControl(this, this.addBefore);
-},
-parentChanged: function(e) {
-e && e != this.parent && e.removeChild(this);
-},
-isDescendantOf: function(e) {
-var t = this;
-while (t && t != e) t = t.parent;
-return e && t == e;
-},
-getControls: function() {
-return this.controls;
-},
-getClientControls: function() {
-var e = [];
-for (var t = 0, n = this.controls, r; r = n[t]; t++) r.isChrome || e.push(r);
-return e;
-},
-destroyClientControls: function() {
-var e = this.getClientControls();
-for (var t = 0, n; n = e[t]; t++) n.destroy();
-},
-addControl: function(e, t) {
-this.controls.push(e), this.addChild(e, t);
-},
-removeControl: function(e) {
-return e.setParent(null), enyo.remove(e, this.controls);
-},
-indexOfControl: function(e) {
-return enyo.indexOf(e, this.controls);
-},
-indexOfClientControl: function(e) {
-return enyo.indexOf(e, this.getClientControls());
-},
-indexInContainer: function() {
-return this.container.indexOfControl(this);
-},
-clientIndexInContainer: function() {
-return this.container.indexOfClientControl(this);
-},
-controlAtIndex: function(e) {
-return this.controls[e];
-},
-addChild: function(e, t) {
-if (this.controlParent) this.controlParent.addChild(e); else {
-e.setParent(this);
-if (t !== undefined) {
-var n = t === null ? 0 : this.indexOfChild(t);
-this.children.splice(n, 0, e);
-} else this.children.push(e);
-}
-},
-removeChild: function(e) {
-return enyo.remove(e, this.children);
-},
-indexOfChild: function(e) {
-return enyo.indexOf(e, this.children);
-},
-layoutKindChanged: function() {
-this.layout && this.layout.destroy(), this.layout = enyo.createFromKind(this.layoutKind, this), this.generated && this.render();
-},
-flow: function() {
-this.layout && this.layout.flow();
-},
-reflow: function() {
-this.layout && this.layout.reflow();
-},
-resized: function() {
-this.waterfall("onresize", enyo.UiComponent._resizeFlags), this.waterfall("onpostresize", enyo.UiComponent._resizeFlags);
-},
-resizeHandler: function() {
-this.reflow();
-},
-waterfallDown: function(e, t, n) {
-for (var r in this.$) this.$[r] instanceof enyo.UiComponent || this.$[r].waterfall(e, t, n);
-for (var i = 0, s = this.children, o; o = s[i]; i++) (o.showing || !t || !t.showingOnly) && o.waterfall(e, t, n);
-},
-getBubbleTarget: function() {
-return this.parent;
-}
-}), enyo.createFromKind = function(e, t) {
-var n = e && enyo.constructorForKind(e);
-if (n) return new n(t);
-}, enyo.master = new enyo.Component({
-name: "master",
-notInstanceOwner: !0,
-eventFlags: {
-showingOnly: !0
-},
-getId: function() {
-return "";
-},
-isDescendantOf: enyo.nop,
-bubble: function(e, t, n) {
-e == "onresize" ? (enyo.master.waterfallDown("onresize", this.eventFlags), enyo.master.waterfallDown("onpostresize", this.eventFlags)) : enyo.Signals.send(e, t);
-}
-});
-
-// Layout.js
-
-enyo.kind({
-name: "enyo.Layout",
-kind: null,
-layoutClass: "",
-constructor: function(e) {
-this.container = e, e && e.addClass(this.layoutClass);
-},
-destroy: function() {
-this.container && this.container.removeClass(this.layoutClass);
-},
-flow: function() {},
-reflow: function() {}
-});
-
-// Signals.js
-
-enyo.kind({
-name: "enyo.Signals",
-kind: enyo.Component,
-create: function() {
-this.inherited(arguments), enyo.Signals.addListener(this);
-},
-destroy: function() {
-enyo.Signals.removeListener(this), this.inherited(arguments);
-},
-notify: function(e, t) {
-this.dispatchEvent(e, t);
-},
-statics: {
-listeners: [],
-addListener: function(e) {
-this.listeners.push(e);
-},
-removeListener: function(e) {
-enyo.remove(e, this.listeners);
-},
-send: function(e, t) {
-enyo.forEach(this.listeners, function(n) {
-n.notify(e, t);
-});
-}
-}
-});
-
-// Async.js
+// ../lib/enyo/source/ajax/Async.js
 
 enyo.kind({
 name: "enyo.Async",
@@ -923,35 +373,7 @@ this.respond(e);
 }
 });
 
-// json.js
-
-enyo.json = {
-stringify: function(e, t, n) {
-return JSON.stringify(e, t, n);
-},
-parse: function(e, t) {
-return e ? JSON.parse(e, t) : null;
-}
-};
-
-// cookie.js
-
-enyo.getCookie = function(e) {
-var t = document.cookie.match(new RegExp("(?:^|; )" + e + "=([^;]*)"));
-return t ? decodeURIComponent(t[1]) : undefined;
-}, enyo.setCookie = function(e, t, n) {
-var r = e + "=" + encodeURIComponent(t), i = n || {}, s = i.expires;
-if (typeof s == "number") {
-var o = new Date;
-o.setTime(o.getTime() + s * 24 * 60 * 60 * 1e3), s = o;
-}
-s && s.toUTCString && (i.expires = s.toUTCString());
-var u, a;
-for (u in i) r += "; " + u, a = i[u], a !== !0 && (r += "=" + a);
-document.cookie = r;
-};
-
-// xhr.js
+// ../lib/enyo/source/ajax/xhr.js
 
 enyo.xhr = {
 request: function(e) {
@@ -995,7 +417,7 @@ return null;
 }
 };
 
-// formdata.js
+// ../lib/enyo/source/ajax/formdata.js
 
 (function(e) {
 function i() {
@@ -1032,7 +454,7 @@ return t;
 }, enyo.Blob = s;
 })(window);
 
-// AjaxProperties.js
+// ../lib/enyo/source/ajax/AjaxProperties.js
 
 enyo.AjaxProperties = {
 cacheBust: !0,
@@ -1049,7 +471,7 @@ xhrFields: null,
 mimeType: null
 };
 
-// Ajax.js
+// ../lib/enyo/source/ajax/Ajax.js
 
 enyo.kind({
 name: "enyo.Ajax",
@@ -1148,7 +570,7 @@ return t;
 }
 });
 
-// Jsonp.js
+// ../lib/enyo/source/ajax/Jsonp.js
 
 enyo.kind({
 name: "enyo.JsonpRequest",
@@ -1196,63 +618,6 @@ bodyArgsFromParams: function(e, t) {
 if (enyo.isString(e)) return e.replace("=?", "=" + t);
 var n = enyo.mixin({}, e);
 return n[this.callbackName] = t, enyo.Ajax.objectToQuery(n);
-}
-});
-
-// WebService.js
-
-enyo.kind({
-name: "enyo._AjaxComponent",
-kind: enyo.Component,
-published: enyo.AjaxProperties
-}), enyo.kind({
-name: "enyo.WebService",
-kind: enyo._AjaxComponent,
-published: {
-jsonp: !1,
-callbackName: "callback",
-charset: null,
-timeout: 0
-},
-events: {
-onResponse: "",
-onError: ""
-},
-constructor: function(e) {
-this.inherited(arguments);
-},
-send: function(e, t) {
-return this.jsonp ? this.sendJsonp(e, t) : this.sendAjax(e, t);
-},
-sendJsonp: function(e, t) {
-var n = new enyo.JsonpRequest;
-for (var r in {
-url: 1,
-callbackName: 1,
-charset: 1,
-timeout: 1
-}) n[r] = this[r];
-return enyo.mixin(n, t), this.sendAsync(n, e);
-},
-sendAjax: function(e, t) {
-var n = new enyo.Ajax(t);
-for (var r in enyo.AjaxProperties) n[r] = this[r];
-return n.timeout = this.timeout, enyo.mixin(n, t), this.sendAsync(n, e);
-},
-sendAsync: function(e, t) {
-return e.go(t).response(this, "response").error(this, "error");
-},
-response: function(e, t) {
-this.doResponse({
-ajax: e,
-data: t
-});
-},
-error: function(e, t) {
-this.doError({
-ajax: e,
-data: t
-});
 }
 });
 
@@ -1462,16 +827,15 @@ dbcallback: {},
 needupgrade: !1
 },
 async: enyo.Async,
-components: [ {
-kind: "Signals",
-onCommit: "commit"
-} ],
 DOC_STORE: "doc-store",
 CONFIG_STORE: "config-store",
+ATTACHMENT_STORE: "attachment-store",
 idb: !1,
 max_number: 9007199254740992,
 viewfunctions: {},
 returnarray: {},
+returnend: {},
+returnattachments: {},
 commit: function(e, t) {
 var n = t.dispatchTarget;
 },
@@ -1496,7 +860,7 @@ reason: t.target
 },
 success: function(e) {
 this.idb = e.target.result;
-var t = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), n = t.objectStore(this.DOC_STORE).openCursor();
+var t = this.idb.transaction(this.DOC_STORE, window.IDBTransaction.READ), n = t.objectStore(this.DOC_STORE).openCursor();
 n.onsuccess = enyo.bind(this, this.viewresults), n.onerror = enyo.bind(this, this.handleerror);
 },
 viewresults: function(e) {
@@ -1512,9 +876,8 @@ t["continue"]();
 } else this.unrollpreque();
 },
 unrollpreque: function() {
-pq = this.preque;
-var e = pq.length;
-for (var t = 0; t < e; t++) pq[t].type === "builkDocs" ? this.bulkDocs(pq[t].docs, pq[t].async) : pq[t].type === "allDocs" ? this.allDocs(pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "put" ? this.put(pq[t].doc, pq[t].options, pq[t].async, pq[t].config) : pq[t].type === "putupdate" ? this.putupdate(pq[t].async, pq[t].doc, pq[t].options, pq[t].ev) : pq[t].type === "runview" ? this.runview(pq[t].view, pq[t].funstring, pq[t].docu) : pq[t].type === "get" ? this.get(pq[t].docid, pq[t].async, pq[t].config) : pq[t].type === "remove" ? this.remove(pq[t].docid, pq[t].localrev, pq[t].async, pq[t].config) : pq[t].type === "query" && this.query(pq[t].fun, pq[t].options, pq[t].async);
+var e = this.preque, t = e.length;
+for (var n = 0; n < t; n++) e[n].type === "builkDocs" ? this.bulkDocs(e[n].docs, e[n].async) : e[n].type === "allDocs" ? this.allDocs(e[n].options, e[n].async, e[n].config) : e[n].type === "put" ? this.put(e[n].doc, e[n].options, e[n].async, e[n].config) : e[n].type === "putAttachment" ? this.put(e[n].docid, e[n].rev, e[n].name, e[n].doc, e[n].async) : e[n].type === "putupdate" ? this.putupdate(e[n].async, e[n].doc, e[n].options, e[n].ev) : e[n].type === "runview" ? this.runview(e[n].view, e[n].funstring, e[n].docu) : e[n].type === "get" ? this.get(e[n].docid, e[n].async, e[n].config) : e[n].type === "getAttachment" ? this.get(e[n].docid, e[n].options, e[n].config) : e[n].type === "remove" ? this.remove(e[n].docid, e[n].localrev, e[n].async, e[n].config) : e[n].type === "query" && this.query(e[n].fun, e[n].options, e[n].async);
 this.preque.pop();
 },
 versioncomplete: function(e) {
@@ -1534,8 +897,8 @@ var t = e.target.result.createObjectStore(this.DOC_STORE, {
 keyPath: "_id"
 }), n = e.target.result.createObjectStore(this.CONFIG_STORE, {
 keyPath: "config"
-}), r = e.target.transaction.objectStore(this.DOC_STORE);
-r.createIndex("changes", "_update_seq", {
+}), r = e.target.result.createObjectStore(this.ATTACHMENT_STORE), i = e.target.transaction.objectStore(this.DOC_STORE);
+i.createIndex("changes", "_update_seq", {
 unique: !1
 });
 },
@@ -1569,7 +932,7 @@ if (view === last) {
 enyo.mixin(docu, newdoc);
 for (var viewdoc in this.returnarray[viewid]) enyo.mixin(docu, this.returnarray[viewid][viewdoc]);
 async = new enyo.Async;
-var txn = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), datastore = txn.objectStore(this.DOC_STORE).get(docu._id);
+var txn = this.idb.transaction(this.DOC_STORE, window.IDBTransaction.READ_WRITE), datastore = txn.objectStore(this.DOC_STORE).get(docu._id);
 datastore.onsuccess = enyo.bind(this, this.putupdate, async, docu, {
 update_seq: !0
 }), datastore.onerror = enyo.bind(this, this.handleerror, async);
@@ -1603,7 +966,7 @@ unique: !1
 },
 putview: function(e, t, n) {
 this.idb = n.target.result;
-var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ_WRITE), i = r.objectStore(this.DOC_STORE).get(e._id);
+var r = this.idb.transaction(this.DOC_STORE, window.IDBTransaction.READ_WRITE), i = r.objectStore(this.DOC_STORE).get(e._id);
 i.onsuccess = enyo.bind(this, this.putupdate, t, e, {
 update_seq: !0
 }), i.onerror = enyo.bind(this, this.handleerror, t), this.unrollpreque();
@@ -1617,11 +980,11 @@ r || (e._id === undefined && (e._id = Math.uuid(32, 16).toLowerCase()), e._local
 if (s === null) {
 var f = this.DOC_STORE, l;
 if (r) {
-f = this.CONFIG_STORE, l = this.idb.transaction(f, IDBTransaction.READ_WRITE);
+f = this.CONFIG_STORE, l = this.idb.transaction(f, window.IDBTransaction.READ_WRITE);
 var c = l.objectStore(f).put(e);
 c.onsuccess = enyo.bind(this, this.putsuccess, n, ""), c.onerror = enyo.bind(this, this.handleerror, n);
 } else {
-l = this.idb.transaction(f, IDBTransaction.READ_WRITE);
+l = this.idb.transaction(f, window.IDBTransaction.READ_WRITE);
 var h = l.objectStore(f).get(e._id);
 h.onsuccess = enyo.bind(this, this.putupdate, n, e, t), h.onerror = enyo.bind(this, this.handleerror, n), o = [];
 for (var p in this.viewfunctions) o.push(p);
@@ -1653,9 +1016,25 @@ async: n
 });
 return n;
 },
+putAttachment: function(e, t, n) {
+n === undefined && (n = new enyo.Async);
+if (this.idb) {
+store = this.ATTACHMENT_STORE, txn = this.idb.transaction(store, window.IDBTransaction.READ_WRITE);
+var r = txn.objectStore(store).put(t, e);
+r.onsuccess = enyo.bind(this, this.putsuccess, n, ""), r.onerror = enyo.bind(this, this.handleerror, n);
+} else this.preque.push({
+type: "putAttachment",
+docid: docd,
+rev: rev,
+name: name,
+doc: t,
+async: n
+});
+return n;
+},
 putupdate: function(e, t, n, r) {
 if (this.idb) {
-var i = r.target.result, s = this.DOC_STORE, o = this.idb.transaction(s, IDBTransaction.READ_WRITE), u = {}, a = n ? n.update_seq : !1;
+var i = r.target.result, s = this.DOC_STORE, o = this.idb.transaction(s, window.IDBTransaction.READ_WRITE), u = {}, a = n ? n.update_seq : !1;
 if (i) {
 var f = i._deleted ? !0 : !1, l = i._rev !== undefined ? i._rev[0] : 0, c = t._rev !== undefined ? t._rev[0] : 0, h = c > l, p = /^_view_.*/;
 for (var d in i.doc) d.match(p) !== null && t[d] === undefined && (t[d] = i[d]);
@@ -1685,12 +1064,7 @@ async: e
 },
 putsuccess: function(e, t, n) {
 var r = n.target.result;
-enyo.Signals.send("onCommit", {
-status: "changed",
-id: r,
-sender: "SundayData.put",
-database: this.databaseName
-}), e.responders.length === 0 ? e.response(function(e, n) {
+e.responders.length === 0 ? e.response(function(e, n) {
 return {
 ok: !0,
 id: r,
@@ -1755,7 +1129,7 @@ t === undefined && (t = new enyo.Async);
 if (this.idb) {
 var r = this.DOC_STORE;
 n && (r = this.CONFIG_STORE);
-var i = this.idb.transaction(r, IDBTransaction.READ), s = i.objectStore(r).get(e);
+var i = this.idb.transaction(r, window.IDBTransaction.READ), s = i.objectStore(r).get(e);
 s.onsuccess = enyo.bind(this, this.getsuccess, t), s.onerror = enyo.bind(this, this.handleerror, t);
 } else this.preque.push({
 type: "get",
@@ -1764,6 +1138,19 @@ config: n,
 async: t
 });
 return t;
+},
+getAttachment: function(e, t, n) {
+n === undefined && (n = new enyo.Async);
+if (this.idb) {
+var r = this.ATTACHMENT_STORE, i = this.idb.transaction(r, window.IDBTransaction.READ), s = i.objectStore(r).get(e);
+s.onsuccess = enyo.bind(this, this.getsuccess, n), s.onerror = enyo.bind(this, this.handleerror, n);
+} else this.preque.push({
+type: "getAttachment",
+docid: e,
+options: t,
+async: n
+});
+return n;
 },
 getsuccess: function(e, t) {
 var n = t.target.result;
@@ -1799,7 +1186,7 @@ var r = "all" + Math.uuid(32, 16).toLowerCase();
 this.returnarray[r] = [];
 var i = this.DOC_STORE;
 n && (i = this.CONFIG_STORE);
-var s = this.idb.transaction(i, IDBTransaction.READ), o = s.objectStore(i).openCursor();
+var s = this.idb.transaction(i, window.IDBTransaction.READ), o = s.objectStore(i).openCursor();
 o.onsuccess = enyo.bind(this, this.allDocssuccess, t, r, e), o.onerror = enyo.bind(this, this.handleerror, t);
 } else this.preque.push({
 type: "allDocs",
@@ -1808,6 +1195,27 @@ config: n,
 async: t
 });
 return t;
+},
+attachmentResponse: function(e, t, n, r, i, s, o, u) {
+var a = new this.async;
+a.error(function(t, n) {
+var r = {
+error: "Unknown",
+reason: n
+};
+return e.recover(), r;
+}), a.response(function(r, a) {
+e.returnattachments[n].pop();
+if (o !== undefined && o.base64) {
+var f = /^data:.+\/(.+);base64,(.*)$/, l = a.match(f);
+l.length > 2 && (i.doc._attachments[s].data = l[2]);
+} else i.doc._attachments[s].data = a;
+o !== undefined && !o.include_docs && delete i.doc, e.returnarray[n].push(i), e.returnattachments[n].length === 0 && e.returnend[n] === !0 && u(t, n, {}, {
+target: {
+result: !1
+}
+});
+}), this.getAttachment(r, {}, a);
 },
 allDocssuccess: function(e, t, n, r) {
 var i = r.target.result;
@@ -1824,26 +1232,33 @@ if (s.doc._deleted === undefined) {
 delete s.doc._revhistory;
 var o = /^_view_.*/;
 for (var u in s.doc) u.match(o) !== null && delete s.doc[u];
-n !== undefined && !n.include_docs && delete s.doc, this.returnarray[t].push(s);
+if (n !== undefined && n.attachments) {
+this.returnattachments[t] === undefined && (this.returnattachments[t] = []);
+for (var a in s.doc._attachments) {
+this.returnattachments[t].push(a);
+var f = s.doc._attachments[a].data, l = this;
+this.attachmentResponse(l, e, t, f, s, a, n, enyo.bind(this, this.allDocssuccess));
+}
+} else n !== undefined && !n.include_docs && delete s.doc, this.returnarray[t].push(s);
 }
 i["continue"]();
-} else {
-var a = {
+} else if (n !== undefined && !n.attachments || this.returnattachments[t] === undefined || this.returnattachments[t].length === 0) {
+var c = {
 total_rows: this.returnarray[t].length,
 rows: this.returnarray[t]
 };
 delete this.returnarray[t], e.responders.length === 0 ? e.response(this, function(e, t) {
-return a;
-}) : e.go(a);
-}
+return c;
+}) : e.go(c);
+} else this.returnend[t] = !0;
 },
 changes: function(e, t) {
 t === undefined && (t = new enyo.Async);
 if (this.idb) {
 var n = "changes" + Math.uuid(32, 16).toLowerCase();
 this.returnarray[n] = [];
-var r = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), i = r.objectStore(this.DOC_STORE), s = i.index("changes").openCursor();
-s.onsuccess = enyo.bind(this, this.changessuccess, t, n), s.onerror = enyo.bind(this, this.handleerror, t);
+var r = this.idb.transaction(this.DOC_STORE, window.IDBTransaction.READ), i = r.objectStore(this.DOC_STORE), s = i.index("changes").openCursor();
+s.onsuccess = enyo.bind(this, this.changessuccess, t, n, e), s.onerror = enyo.bind(this, this.handleerror, t);
 } else this.preque.push({
 type: "query",
 fun: fun,
@@ -1852,38 +1267,45 @@ async: t
 });
 return t;
 },
-changessuccess: function(e, t, n) {
-var r = n.target.result;
-if (r) {
-if (r.key !== null && r.value._update_seq === this.max_number) {
-var i = {
-id: r.primaryKey,
+changessuccess: function(e, t, n, r) {
+var i = r.target.result;
+if (i) {
+if (i.key !== null && i.value._update_seq === this.max_number) {
+var s = {
+id: i.primaryKey,
 changes: [ {
-rev: r.value._localrev
+rev: i.value._localrev
 } ],
-doc: r.value
+doc: i.value
 };
-delete i.doc._revhistory;
-var s = /^_view_.*/;
-for (var o in i.doc) o.match(s) !== null && delete i.doc[o];
-this.returnarray[t].push(i);
+delete s.doc._revhistory;
+var o = /^_view_.*/;
+for (var u in s.doc) u.match(o) !== null && delete s.doc[u];
+if (n !== undefined && n.attachments) {
+this.returnattachments[t] === undefined && (this.returnattachments[t] = []);
+for (var a in s.doc._attachments) {
+this.returnattachments[t].push(a);
+var f = s.doc._attachments[a].data, l = this;
+this.attachmentResponse(l, e, t, f, s, a, n, enyo.bind(this, this.changessuccess));
 }
-r["continue"]();
-} else {
-var u = {
+} else n !== undefined && !n.include_docs && delete s.doc, this.returnarray[t].push(s);
+}
+i["continue"]();
+} else if (n !== undefined && !n.attachments || this.returnattachments[t] === undefined || this.returnattachments[t].length === 0) {
+var c = {
 results: this.returnarray[t]
 };
 delete this.returnarray[t], e.responders.length === 0 ? e.response(this, function(e, t) {
-return u;
-}) : e.go(u);
-}
+return c;
+}) : e.go(c);
+} else this.returnend[t] = !0;
 },
 query: function(e, t, n) {
 n === undefined && (n = new enyo.Async);
 if (this.idb) {
 var r = "query" + Math.uuid(32, 16).toLowerCase();
 this.returnarray[r] = [];
-var i = this.idb.transaction(this.DOC_STORE, IDBTransaction.READ), s = i.objectStore(this.DOC_STORE);
+var i = this.idb.transaction(this.DOC_STORE, window.IDBTransaction.READ), s = i.objectStore(this.DOC_STORE);
 if (s.indexNames.contains(e.replace("/", "_"))) {
 var o = s.index(e.replace("/", "_")).openCursor();
 o.onsuccess = enyo.bind(this, this.querysuccess, n, r, e), o.onerror = enyo.bind(this, this.handleerror, n);
@@ -1937,7 +1359,7 @@ n === undefined && (n = new enyo.Async);
 if (this.idb) {
 var i = this.DOC_STORE;
 r && (i = this.CONFIG_STORE);
-var s = this.idb.transaction(i, IDBTransaction.READ_WRITE), o = s.objectStore(i).get(e);
+var s = this.idb.transaction(i, window.IDBTransaction.READ_WRITE), o = s.objectStore(i).get(e);
 o.onsuccess = enyo.bind(this, this.removeget, n, t, r), o.onerror = enyo.bind(this, this.handleerror, n);
 } else this.preque.push({
 type: "remove",
@@ -1955,7 +1377,7 @@ if (i && t === i._localrev) {
 doc = {
 _deleted: !0
 }, doc._id = i._id, doc._localrev = i._localrev, doc._revhistory = i;
-var o = this.idb.transaction(s, IDBTransaction.READ_WRITE), u = o.objectStore(s).put(doc);
+var o = this.idb.transaction(s, window.IDBTransaction.READ_WRITE), u = o.objectStore(s).put(doc);
 u.onsuccess = enyo.bind(this, this.removesuccess, e, doc._id, doc._localrev), u.onerror = enyo.bind(this, this.handleerror, e);
 }
 },
@@ -1995,7 +1417,7 @@ r.length > 0 ? o.bulkDocs(r, {
 update_seq: !0
 }, n) : n.go({});
 }), s.response(function(n, s) {
-s.value !== undefined ? e.changes(s.value, t, i) : t !== undefined ? e.changes(0, t, i) : e.allDocs({
+s.value !== undefined ? e.changes(s.value, t, i) : t !== undefined ? (t.include_docs = !0, t.update_seq = !0, e.allDocs(t, r)) : e.allDocs({
 include_docs: !0,
 update_seq: !0
 }, r);
@@ -2016,10 +1438,6 @@ username: "",
 password: ""
 },
 async: enyo.Ajax,
-components: [ {
-kind: "Signals",
-onCommit: "commit"
-} ],
 returnarray: {},
 authHeader: function() {
 var e = "Basic " + binb2b64(str2binb(this.username + ":" + this.password));
@@ -2132,7 +1550,13 @@ var a = t.results[u].doc;
 o.push(a), delete a._localrev, delete a._update_seq, r.push(a);
 }
 r.length > 0 ? s.bulkDocs(r, {}, i) : n.go({});
-}), e.changes({}, r);
+}), t !== undefined && t.attachments ? e.changes({
+include_docs: !0,
+attachments: !0,
+base64: !0
+}, r) : e.changes({
+include_docs: !0
+}, r);
 }
 });
 
@@ -2140,7 +1564,7 @@ r.length > 0 ? s.bulkDocs(r, {}, i) : n.go({});
 
 enyo.kind({
 name: "SundayData",
-kind: "enyo.Component",
+kind: "enyo.Object",
 published: {
 dataStore: "",
 url: "",
@@ -2197,6 +1621,44 @@ r.setValue(t);
 }), this.data.put(e, t, n), r;
 }
 },
+putAttachment: function(e, t, n) {
+if (this.data) {
+n === undefined && (n = new this.data.async, getasync = new this.data.async);
+var r = new SundayDataReturn;
+r.parent = this;
+var i = this;
+return getasync.error(function(e, t) {
+var n = {
+error: "Unknown",
+reason: t
+};
+return this.recover(), n;
+}), getasync.response(function(e, s) {
+r.setValue(s);
+var o = s;
+o._attachments === undefined && (o._attachments = {});
+var u;
+t.name in o._attachments ? u = o._attachments[t.name].data : (u = Math.uuid(32, 16).toLowerCase(), o._attachments[t.name] = {
+content_type: t.type,
+data: u
+});
+var a = new FileReader;
+a.onload = function(e) {
+i.data.putAttachment(u, e.target.result, n);
+}, a.readAsDataURL(t), i.data.put(o, {
+update_seq: !0
+}, n);
+}), n.error(function(e, t) {
+var n = {
+error: "Unknown",
+reason: t
+};
+return this.recover(), n;
+}), n.response(function(e, t) {
+r.setValue(t);
+}), this.data.get(e, getasync), r;
+}
+},
 get: function(e, t, n) {
 if (this.data) {
 n === undefined && (n = new this.data.async);
@@ -2213,6 +1675,24 @@ reason: t
 }), n.response(function(e, t) {
 r.setValue(t);
 }), this.data.get(e, n), r;
+}
+},
+getAttachment: function(e, t, n) {
+if (this.data) {
+n === undefined && (n = new this.data.async);
+var r = new SundayDataReturn;
+return r.parent = this, n.error(function(e, t) {
+var n = {
+error: "Unknown",
+reason: t
+};
+return t === 404 && (n = {
+error: "Not Found",
+reason: t
+}), this.recover(), n;
+}), n.response(function(e, t) {
+r.setValue(t);
+}), this.data.getAttachment(e, t, n), r;
 }
 },
 allDocs: function(e, t) {
@@ -2419,3 +1899,7 @@ t.setValue(e);
 return this.resultStack.push(n), this;
 };
 };
+
+// global.js
+
+global.SundayData = SundayData;
