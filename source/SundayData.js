@@ -52,7 +52,7 @@
 */
 enyo.kind({
 	name: "SundayData",
-	kind: "enyo.Component",
+	kind: "enyo.Object",
 	published: {
 		/**
 			This is usually filled out by setting the url, but
@@ -204,6 +204,55 @@ enyo.kind({
 		} else {
 		}
 	},
+	putAttachment: function (docid, file, async) {
+		if(this.data) {
+			if(async === undefined) {
+				async = new this.data.async();
+				getasync = new this.data.async();
+			}
+			var ret = new SundayDataReturn();
+			ret.parent = this;
+			var parent = this;
+			getasync.error(function(inSender, inResponse) {
+				var response = {"error": "Unknown", "reason": inResponse};
+				this.recover();
+				return response;
+			});
+			getasync.response(function (inSender, inResponse) {
+				//console.log("inSender",inSender);
+				ret.setValue(inResponse);
+				var doc = inResponse;
+				if(doc._attachments === undefined) {
+					doc._attachments = {};
+				}
+				var a_docid; 
+				if(!(file.name in doc._attachments)) {
+					a_docid = Math.uuid(32, 16).toLowerCase();
+					doc._attachments[file.name] = { content_type: file.type, data: a_docid};
+				} else {
+					a_docid = doc._attachments[file.name].data;
+				}
+				var filereader = new FileReader();
+				filereader.onload = function(e) {
+					parent.data.putAttachment(a_docid, e.target.result, async);
+				};
+				filereader.readAsDataURL(file);
+				parent.data.put(doc, {update_seq: true}, async);
+			});
+			async.error(function(inSender, inResponse) {
+				var response = {"error": "Unknown", "reason": inResponse};
+				this.recover();
+				return response;
+			});
+			async.response(function (inSender, inResponse) {
+				//console.log("inSender",inSender);
+				ret.setValue(inResponse);
+			});
+			this.data.get(docid, getasync);
+			return ret;
+		} else {
+		}
+	},
 	/**
 		_get_ is used get your entry with the _id
 
@@ -228,6 +277,29 @@ enyo.kind({
 				ret.setValue(inResponse);
 			});
 			this.data.get(docid, async);
+			return ret;
+		} else {
+		}
+	},
+	getAttachment: function (docid, options, async) {
+		if(this.data) {
+			if(async === undefined) {
+				async = new this.data.async();
+			}
+			var ret = new SundayDataReturn();
+			ret.parent = this;
+			async.error(function(inSender, inResponse) {
+				var response = {"error": "Unknown", "reason": inResponse};
+				if(inResponse === 404) {
+					response = {"error": "Not Found", "reason": inResponse};
+				}
+				this.recover();
+				return response;
+			});
+			async.response(function (inSender, inResponse) {
+				ret.setValue(inResponse);
+			});
+			this.data.getAttachment(docid, options, async);
 			return ret;
 		} else {
 		}
