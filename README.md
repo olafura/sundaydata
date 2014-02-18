@@ -1,4 +1,4 @@
-[SundayData](http://github.com/olafura/sundaydata) - The Javascript Database Library that Scales and Syncs *ALPHA*
+[SundayData](http://github.com/olafura/sundaydata) - The Javascript Database Library that Scales and Syncs *BETA*
 ======================================================
 
 SundayData was born out of the need to handle more data that Todo list and other simple applications.
