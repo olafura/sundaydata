@@ -8,7 +8,7 @@ enyo.kind({
 		var assertEqual = enyo.bind(this, this.assertEqual);
 		testSD.put({_id: "test1_1", somevar: "somedata"}).get().done(
 		function(value){
-			assertEqual("Test that put, get and chaining work", value.somevar, "somedata");	
+			assertEqual("Test that put, get and chaining work", value.somevar, "somedata");
 			testSD.removeDB();
 		});
 	},
@@ -21,7 +21,7 @@ enyo.kind({
 		var testget = testput.get();
 		testget.done(
 			function(value){
-				assertEqual("Test that put, get work unchained", value.somevar, "somedata");	
+				assertEqual("Test that put, get work unchained", value.somevar, "somedata");
 				testSD.removeDB();
 			}
 		);
@@ -38,7 +38,7 @@ enyo.kind({
 				var test1 = value.rows[0];
 				var test2 = value.rows[1];
 				var testcase = test1.doc.somevar === "somedata" && test2.doc.somevar === "somedata2";
-				assertTrue("Test that allDocs works", testcase);	
+				assertTrue("Test that allDocs works", testcase);
 				testSD.removeDB();
 			}
 		);
@@ -54,7 +54,7 @@ enyo.kind({
 				testSD.setUrl("idb://"+testid+"/");
 				testSD.get("test4_1").done(
 					function(value2) {
-						assertNotEqual("Test that removeDB works as promised", value2.somevar, "somedata");	
+						assertNotEqual("Test that removeDB works as promised", value2.somevar, "somedata");
 						testSD.removeDB();
 				});
 			}
