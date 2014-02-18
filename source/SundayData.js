@@ -117,7 +117,7 @@ enyo.kind({
                 var httpresults = url.match(this.httpcheck);
                 if (httpresults !== null && httpresults[1] !== "" && httpresults[4] !== "") {
                     if(httpresults[3] !== undefined) {
-                        usernamepassword = httpresults[3];
+                        var usernamepassword = httpresults[3];
                         usernamepassword = usernamepassword.replace(/@$/,"").split(":");
                         this.setUsername(usernamepassword[0]);
                         this.setPassword(usernamepassword[1]);
@@ -463,7 +463,7 @@ enyo.kind({
                         newstore.host = httpresults[1].replace(httpresults[3],"");
                         newstore.database = httpresults[4];
                         if(httpresults[3] !== undefined) {
-                            usernamepassword = httpresults[3];
+                            var usernamepassword = httpresults[3];
                             usernamepassword = usernamepassword.replace(/@$/,"").split(":");
                             newstore.username = usernamepassword[0];
                             newstore.password = usernamepassword[1];

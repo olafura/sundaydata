@@ -486,7 +486,7 @@ enyo.kind({
             var bulkid = "bulk" + Math.uuid(32, 16).toLowerCase();
             this.returnarray[bulkid] = [];
             var length = docs.length;
-            putrespfun = function (inSender, inResponse) {
+            var putrespfun = function (inSender, inResponse) {
                 if (inResponse.ok === true) {
                     this.bulkDocsresults(bulkasync, length, bulkid, {
                         id: inResponse.id,
@@ -496,7 +496,7 @@ enyo.kind({
                     this.bulkDocsresults(bulkasync, length, bulkid, inResponse);
                 }
             };
-            removerespfun = function (inSender, inResponse) {
+            var removerespfun = function (inSender, inResponse) {
                 if (inResponse.ok === true) {
                     this.bulkDocsresults(bulkasync, length, bulkid, {
                         id: inResponse.id,
