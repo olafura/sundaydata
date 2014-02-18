@@ -27,8 +27,6 @@ Create a simple interface to the library that makes it easy to update the dom as
 
 Make the replication be continuous and faster.
 
-Get things to the point where I can remove the Alpha label of it, a lot of testing and checking how different browsers handle it.
-
 Make it easy to use from Enyojs, the focus until now has to make a really good library with a great api.
 
 Questions
