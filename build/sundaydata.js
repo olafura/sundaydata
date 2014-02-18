@@ -809,11 +809,9 @@ enyo.kind({
 name: "DataLayout",
 kind: null,
 constructor: function(e) {
-this.container = e, e;
+this.container = e;
 },
-destroy: function() {
-this.container;
-}
+destroy: function() {}
 });
 
 // SundayDataIDB.js

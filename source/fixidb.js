@@ -24,4 +24,3 @@ IDBTransaction.READ = IDBTransaction.READ || 'readonly';
 IDBCursor = IDBCursor || {};
 IDBCursor.NEXT = IDBCursor.NEXT || 'next';
 IDBCursor.PREV = IDBCursor.PREV || 'prev';
-

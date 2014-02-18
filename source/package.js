@@ -1,9 +1,9 @@
 enyo.depends(
-	"../lib/uuid.js",
-	"../lib/sha1.js",
+    "../lib/uuid.js",
+    "../lib/sha1.js",
         "fixidb.js",
-	"DataLayout.js",
-	"SundayDataIDB.js",
-	"SundayDataHTTP.js",
-	"SundayData.js"
+    "DataLayout.js",
+    "SundayDataIDB.js",
+    "SundayDataHTTP.js",
+    "SundayData.js"
 );

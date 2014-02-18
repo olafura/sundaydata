@@ -44,7 +44,7 @@ module.exports = function(grunt) {
                 deps: "test/qunitbootstrap.js",
                 //code: "build/sundaydata.min.js",
                 code: "build/sundaydata.js",
-                tests: [ 
+                tests: [
                     "./test/sundaydata/tests/SundayDataIDBTestQ.js"
                 ],
                 done: function(err, res){
@@ -117,7 +117,7 @@ module.exports = function(grunt) {
             }
         }
         grunt.util.spawn(options, doneFunction);
-    }); 
+    });
 
     grunt.registerTask('testphantom', 'Testing with phantomjs',function() {
         grunt.log.writeln('start testing phantomjs');
