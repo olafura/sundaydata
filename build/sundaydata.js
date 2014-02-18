@@ -1083,27 +1083,26 @@ update_seq: !0
 if (this.idb) {
 var s = "bulk" + Math.uuid(32, 16).toLowerCase();
 this.returnarray[s] = [];
-var o = e.length;
-putrespfun = function(e, t) {
+var o = e.length, u = function(e, t) {
 t.ok === !0 ? this.bulkDocsresults(n, o, s, {
 id: t.id,
 rev: t.rev
 }) : this.bulkDocsresults(n, o, s, t);
-}, removerespfun = function(e, t) {
+}, a = function(e, t) {
 t.ok === !0 ? this.bulkDocsresults(n, o, s, {
 id: t.id,
 rev: t.rev,
 _deleted: !0
 }) : this.bulkDocsresults(n, o, s, t);
 };
-for (var u = 0; u < o; u++) {
-var a = e[u];
-if (a._deleted === undefined) {
-var f = this.put(a, i);
-f.response(this, putrespfun);
+for (var f = 0; f < o; f++) {
+var l = e[f];
+if (l._deleted === undefined) {
+var c = this.put(l, i);
+c.response(this, u);
 } else {
-var l = this.remove(a._id, a._localrev);
-l.response(this, removerespfun);
+var h = this.remove(l._id, l._localrev);
+h.response(this, a);
 }
 }
 } else this.preque.push({
@@ -1582,7 +1581,13 @@ if (typeof e == "string") {
 var t = e.match(this.idbcheck);
 if (t !== null) t[1] !== "" && (this.setDatabase(t[1]), this.setDataStore("SundayDataIDB")); else {
 var n = e.match(this.httpcheck);
-n !== null && n[1] !== "" && n[4] !== "" && (n[3] !== undefined && (usernamepassword = n[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), this.setUsername(usernamepassword[0]), this.setPassword(usernamepassword[1])), this.setHost(n[1].replace(n[3], "")), this.setDatabase(n[4]), this.setDataStore("SundayDataHTTP"));
+if (n !== null && n[1] !== "" && n[4] !== "") {
+if (n[3] !== undefined) {
+var r = n[3];
+r = r.replace(/@$/, "").split(":"), this.setUsername(r[0]), this.setPassword(r[1]);
+}
+this.setHost(n[1].replace(n[3], "")), this.setDatabase(n[4]), this.setDataStore("SundayDataHTTP");
+}
 }
 }
 },
@@ -1777,16 +1782,22 @@ if (typeof e != "object") {
 var u = e.match(this.idbcheck);
 if (u !== null) u[1] !== "" && (i.database = u[1], i.dataStore = "SundayDataIDB"); else {
 var a = e.match(this.httpcheck);
-a !== null && a[1] !== "" && a[4] !== "" && (i.dataStore = "SundayDataHTTP", i.host = a[1].replace(a[3], ""), i.database = a[4], a[3] !== undefined && (usernamepassword = a[3], usernamepassword = usernamepassword.replace(/@$/, "").split(":"), i.username = usernamepassword[0], i.password = usernamepassword[1]));
+if (a !== null && a[1] !== "" && a[4] !== "") {
+i.dataStore = "SundayDataHTTP", i.host = a[1].replace(a[3], ""), i.database = a[4];
+if (a[3] !== undefined) {
+var f = a[3];
+f = f.replace(/@$/, "").split(":"), i.username = f[0], i.password = f[1];
+}
+}
 }
 s = enyo.createFromKind(i.dataStore, i);
 } else s = e.data;
-var f = this.data;
+var l = this.data;
 return this.dataStore === "SundayDataIDB" ? (o.response(function(e, r) {
-s.replicate(f, t, n);
-}), f.replicate(s, t, o)) : (o.response(function(e, r) {
-f.replicate(s, t, n);
-}), s.replicate(f, t, o)), r;
+s.replicate(l, t, n);
+}), l.replicate(s, t, o)) : (o.response(function(e, r) {
+l.replicate(s, t, n);
+}), s.replicate(l, t, o)), r;
 }
 }
 }), enyo.createFromKind = function(e, t) {
