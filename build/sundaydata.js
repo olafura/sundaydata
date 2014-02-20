@@ -799,11 +799,11 @@ return n;
 
 var hexcase = 0, b64pad = "=", chrsz = 8;
 
-// fixidb.js
+// ../source/fixidb.js
 
 window.indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB, window.IDBCursor = window.IDBCursor || window.webkitIDBCursor, window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange, window.IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction, IDBTransaction = IDBTransaction || {}, IDBTransaction.READ_WRITE = IDBTransaction.READ_WRITE || "readwrite", IDBTransaction.READ = IDBTransaction.READ || "readonly", IDBCursor = IDBCursor || {}, IDBCursor.NEXT = IDBCursor.NEXT || "next", IDBCursor.PREV = IDBCursor.PREV || "prev";
 
-// DataLayout.js
+// ../source/DataLayout.js
 
 enyo.kind({
 name: "DataLayout",
@@ -814,7 +814,7 @@ this.container = e;
 destroy: function() {}
 });
 
-// SundayDataIDB.js
+// ../source/SundayDataIDB.js
 
 enyo.kind({
 name: "SundayDataIDB",
@@ -1422,7 +1422,7 @@ update_seq: !0
 }
 });
 
-// SundayDataHTTP.js
+// ../source/SundayDataHTTP.js
 
 enyo.kind({
 name: "SundayDataHTTP",
@@ -1557,7 +1557,7 @@ include_docs: !0
 }
 });
 
-// SundayData.js
+// ../source/sundaydata.js
 
 enyo.kind({
 name: "SundayData",
@@ -1594,10 +1594,9 @@ this.setHost(n[1].replace(n[3], "")), this.setDatabase(n[4]), this.setDataStore(
 dataStoreChanged: function() {
 this.data && this.data.destroy(), this.data = enyo.createFromKind(this.dataStore, this), this.generated && this.render();
 },
-removeDB: function(e) {
+removeDB: function() {
 if (this.data) {
-e === undefined && (e = new this.data.async);
-var t = new SundayDataReturn;
+var e = new this.data.async, t = new SundayDataReturn;
 return t.parent = this, e.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1609,10 +1608,9 @@ t.parent.data.destroy(), t.parent.dataStore = "", t.parent.url = "", t.parent.da
 }), this.data.removeDB(e), t;
 }
 },
-put: function(e, t, n) {
+put: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 return r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1624,21 +1622,20 @@ r.setValue(t);
 }), this.data.put(e, t, n), r;
 }
 },
-putAttachment: function(e, t, n) {
+putAttachment: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async, getasync = new this.data.async);
-var r = new SundayDataReturn;
-r.parent = this;
-var i = this;
-return getasync.error(function(e, t) {
+var n = new this.data.async, r = new this.data.async, i = new SundayDataReturn;
+i.parent = this;
+var s = this;
+return r.error(function(e, t) {
 var n = {
 error: "Unknown",
 reason: t
 };
 return this.recover(), n;
-}), getasync.response(function(e, s) {
-r.setValue(s);
-var o = s;
+}), r.response(function(e, r) {
+i.setValue(r);
+var o = r;
 o._attachments === undefined && (o._attachments = {});
 var u;
 t.name in o._attachments ? u = o._attachments[t.name].data : (u = Math.uuid(32, 16).toLowerCase(), o._attachments[t.name] = {
@@ -1647,8 +1644,8 @@ data: u
 });
 var a = new FileReader;
 a.onload = function(e) {
-i.data.putAttachment(u, e.target.result, n);
-}, a.readAsDataURL(t), i.data.put(o, {
+s.data.putAttachment(u, e.target.result, n);
+}, a.readAsDataURL(t), s.data.put(o, {
 update_seq: !0
 }, n);
 }), n.error(function(e, t) {
@@ -1658,14 +1655,13 @@ reason: t
 };
 return this.recover(), n;
 }), n.response(function(e, t) {
-r.setValue(t);
-}), this.data.get(e, getasync), r;
+i.setValue(t);
+}), this.data.get(e, r), i;
 }
 },
-get: function(e, t, n) {
+get: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 return r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1680,10 +1676,9 @@ r.setValue(t);
 }), this.data.get(e, n), r;
 }
 },
-getAttachment: function(e, t, n) {
+getAttachment: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 return r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1698,10 +1693,9 @@ r.setValue(t);
 }), this.data.getAttachment(e, t, n), r;
 }
 },
-allDocs: function(e, t) {
+allDocs: function(e) {
 if (this.data) {
-t === undefined && (t = new this.data.async);
-var n = new SundayDataReturn;
+var t = new this.data.async, n = new SundayDataReturn;
 return n.parent = this, t.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1713,10 +1707,9 @@ n.setValue(t);
 }), this.data.allDocs(e, t), n;
 }
 },
-bulkDocs: function(e, t, n) {
+bulkDocs: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 return r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1725,13 +1718,12 @@ reason: t
 return this.recover(), n;
 }), n.response(function(e, t) {
 r.setValue(t);
-}), this.data.bulkDocs(e, t, n), r;
+}), this.data.bulkDocs(e, options, n), r;
 }
 },
-remove: function(e, t, n) {
+remove: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 return r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1749,10 +1741,9 @@ r.setValue(t);
 }), this.data.remove(e, t, n), r;
 }
 },
-query: function(e, t, n) {
+query: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 return r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
@@ -1764,10 +1755,9 @@ r.setValue(t);
 }), this.data.query(e, t, n), r;
 }
 },
-replicate: function(e, t, n) {
+replicate: function(e, t) {
 if (this.data) {
-n === undefined && (n = new this.data.async);
-var r = new SundayDataReturn;
+var n = new this.data.async, r = new SundayDataReturn;
 r.parent = this, n.error(function(e, t) {
 var n = {
 error: "Unknown",
