@@ -146,11 +146,9 @@ enyo.kind({
 
             db.removeDB();
     */
-    removeDB: function (async) {
+    removeDB: function () {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -183,11 +181,9 @@ enyo.kind({
 
             db.put({_id: "test1"}).done();
     */
-    put: function (doc, options, async) {
+    put: function (doc, options) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -204,12 +200,10 @@ enyo.kind({
         } else {
         }
     },
-    putAttachment: function (docid, file, async) {
+    putAttachment: function (docid, file) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-                getasync = new this.data.async();
-            }
+            var async = new this.data.async();
+            var getasync = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             var parent = this;
@@ -258,11 +252,9 @@ enyo.kind({
 
             db.put({_id: "test1"}).done();
     */
-    get: function (docid, domid, async) {
+    get: function (docid, domid) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -281,11 +273,9 @@ enyo.kind({
         } else {
         }
     },
-    getAttachment: function (docid, options, async) {
+    getAttachment: function (docid, options) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -318,11 +308,9 @@ enyo.kind({
                 }
             );
     */
-    allDocs: function (options, async) {
+    allDocs: function (options) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -349,11 +337,9 @@ enyo.kind({
                 {"_id":"2", "string":"test"}];
             db.bulkDocs(docs).done();
     */
-    bulkDocs: function (docs, options, async) {
+    bulkDocs: function (docs, optionsync) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -374,11 +360,9 @@ enyo.kind({
 
             db.remove("docid");
     */
-    remove: function (docid, rev, async) {
+    remove: function (docid, rev) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -404,11 +388,9 @@ enyo.kind({
 
             db.query("thedesign/theview").done();
     */
-    query: function (fun, options, async) {
+    query: function (fun, options) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
@@ -432,11 +414,9 @@ enyo.kind({
 
             db.replicate("http://localhost:5984/test123");
     */
-    replicate: function (url, options, async) {
+    replicate: function (url, options) {
         if(this.data) {
-            if(async === undefined) {
-                async = new this.data.async();
-            }
+            var async = new this.data.async();
             var ret = new SundayDataReturn();
             ret.parent = this;
             async.error(function(inSender, inResponse) {
