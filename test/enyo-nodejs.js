@@ -108,7 +108,13 @@ enyo.depends(
     "test/sundaydata/testnode.js",
     //"test/sundaydata/tests",
     "test/sundaydata/tests/SundayDataIDBTest.js",
-    "source"
+    "lib/uuid.js",
+    "lib/sha1.js",
+    "source/fixidb.js",
+    "source/DataLayout.js",
+    "source/SundayDataIDB.js",
+    "source/SundayDataHTTP.js",
+    "source/sundaydata.js"
 );
 
 // Load the default source folder or the dependencies specified via command line
