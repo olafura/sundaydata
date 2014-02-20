@@ -34,7 +34,7 @@ enyo.depends(
     "../source/DataLayout.js",
     "../source/SundayDataIDB.js",
     "../source/SundayDataHTTP.js",
-    "../source/sundaydata.js"
+    "../source/sundaydata.js",
    //"../lib/enyo/source",
     //"../source",
     "global.js"
